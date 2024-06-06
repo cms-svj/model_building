@@ -5,7 +5,7 @@ export LCG_ARCH=x86_64-el9-gcc12-opt
 source /cvmfs/sft.cern.ch/lcg/views/${LCG_VIEW}/${LCG_ARCH}/setup.sh
 
 export MODEL_BUILDING=$PWD
-export MODEL_BUILDING_EXTERNALS="pythia8"
+export MODEL_BUILDING_EXTERNALS="pythia8 python_packages"
 
 for EXTERNAL in $MODEL_BUILDING_EXTERNALS; do
 	EXTERNAL_DIR=${MODEL_BUILDING}/install/${EXTERNAL}
