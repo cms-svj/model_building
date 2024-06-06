@@ -3,7 +3,9 @@
 ## Installation
 
 ```bash
-source init.sh
+git clone git@github.com:cms-svj/model_building
+cd model_building
+./install.sh
 ```
 
 ## Environment

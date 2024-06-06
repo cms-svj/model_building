@@ -1,3 +1,15 @@
 #!/bin/bash
 
-source /cvmfs/sft.cern.ch/lcg/views/LCG_105/x86_64-el9-gcc12-opt/setup.sh
+export LCG_VIEW=LCG_105
+export LCG_ARCH=x86_64-el9-gcc12-opt
+source /cvmfs/sft.cern.ch/lcg/views/${LCG_VIEW}/${LCG_ARCH}/setup.sh
+
+export MODEL_BUILDING=$PWD
+export MODEL_BUILDING_EXTERNALS="pythia8"
+
+for EXTERNAL in $MODEL_BUILDING_EXTERNALS; do
+	EXTERNAL_DIR=${MODEL_BUILDING}/install/${EXTERNAL}
+	if [ -d ${EXTERNAL_DIR} ]; then
+		source ${EXTERNAL_DIR}/mb_init.sh
+	fi
+done
