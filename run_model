@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+
+import os, fileinput
+from copy import deepcopy
+from magiconfig import ArgumentParser, MagiConfig, MagiConfigOptions, ArgumentDefaultsRawHelpFormatter
+from svjHelper import svjHelper
+
+def separate_args(args,groups):
+    separated = {group.title : MagiConfig(**{a.dest:getattr(args,a,None) for a in group._group_actions}) for group in groups}
+    return separated
+
+if __name__=="__main__":
+    parser = ArgumentParser(config_options=MagiConfigOptions(), formatter_class=ArgumentDefaultsRawHelpFormatter)
+
+    common = parser.add_argument_group("common")
+    common.add_argument("--dir", type=str, default="models", help="output directory")
+    common.add_argument("--pythia", type=str, nargs='*', default=["cards/CMS_Common.txt","cards/CMS_Tune_CP5.txt"], help="additional settings for Pythia")
+    common.add_argument("--delphes", type=str, default="cards/delphes_card_CMS.tcl", help="template card for Delphes")
+
+    model = parser.add_argument_group("model")
+    svjHelper.add_arguments(model)
+
+    args_orig = parser.parse_args()
+    args = separate_args(args_orig,[common,model])
+
+    helper = svjHelper(args["model"])
+    name = helper.name()
+    outdir = os.path.join(args["common"].dir,name)
+    os.makedirs(outdir, exist_ok=True)
+
+    parser.write_config(args_orig,os.path.join(outdir,"config.py"))
+
+    pythia_lines = helper.getPythiaSettings()
+    pythia_fname = os.path.join(outdir,"pythia_card.txt")
+    with open(pythia_fname,'w') as file, fileinput.input(args["common"].pythia) as inputs:
+        file.write('\n'.join(pythia_lines))
+        for line in inputs:
+            file.write(line)
+
+    delphes_lines = helper.getDelphesSettings(args["common"].delphes)
+    delphes_fname = os.path.join(outdir,"delphes_card.txt")
+    with open(delphes_fname,'w') as file:
+        file.write('\n'.join(delphes_lines))
+        for line in inputs:
+            file.write(line)
