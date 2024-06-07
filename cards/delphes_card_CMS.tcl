@@ -38,6 +38,7 @@ set ExecutionPath {
 
   NeutrinoFilter
   GenJetFinder
+  GenFatJetFinder
   GenMissingET
   
   FastJetFinder
@@ -288,6 +289,7 @@ module SimpleCalorimeter ECal {
   add EnergyFraction {1000025} {0.0}
   add EnergyFraction {1000035} {0.0}
   add EnergyFraction {1000045} {0.0}
+$HVEnergyFractions
   # energy fractions for K0short and Lambda
   add EnergyFraction {310} {0.3}
   add EnergyFraction {3122} {0.3}
@@ -373,6 +375,7 @@ module SimpleCalorimeter HCal {
   add EnergyFraction {1000025} {0.0}
   add EnergyFraction {1000035} {0.0}
   add EnergyFraction {1000045} {0.0}
+$HVEnergyFractions
   # energy fractions for K0short and Lambda
   add EnergyFraction {310} {0.7}
   add EnergyFraction {3122} {0.7}
@@ -595,7 +598,7 @@ module PdgCodeFilter NeutrinoFilter {
   add PdgCode {-12}
   add PdgCode {-14}
   add PdgCode {-16}
-
+$HVNuFilter
 }
 
 
@@ -610,9 +613,30 @@ module FastJetFinder GenJetFinder {
 
   # algorithm: 1 CDFJetClu, 2 MidPoint, 3 SIScone, 4 kt, 5 Cambridge/Aachen, 6 antikt
   set JetAlgorithm 6
-  set ParameterR 0.5
+  set ParameterR 0.4
 
-  set JetPTMin 20.0
+  set JetPTMin 15.0
+}
+
+module FastJetFinder GenFatJetFinder {
+  set InputArray NeutrinoFilter/filteredParticles
+
+  set OutputArray jets
+
+  # algorithm: 1 CDFJetClu, 2 MidPoint, 3 SIScone, 4 kt, 5 Cambridge/Aachen, 6 antikt
+  set JetAlgorithm 6
+  set ParameterR 0.8
+
+  set ComputeNsubjettiness 1
+  set Beta 1.0
+  set AxisMode 4
+
+  set ComputeSoftDrop 1
+  set BetaSoftDrop 0.0
+  set SymmetryCutSoftDrop 0.1
+  set R0SoftDrop 0.8
+
+  set JetPTMin 15.0
 }
 
 #########################
@@ -639,9 +663,9 @@ module FastJetFinder FastJetFinder {
 
   # algorithm: 1 CDFJetClu, 2 MidPoint, 3 SIScone, 4 kt, 5 Cambridge/Aachen, 6 antikt
   set JetAlgorithm 6
-  set ParameterR 0.5
+  set ParameterR 0.4
 
-  set JetPTMin 20.0
+  set JetPTMin 15.0
 }
 
 ##################
@@ -661,25 +685,13 @@ module FastJetFinder FatJetFinder {
   set Beta 1.0
   set AxisMode 4
 
-  set ComputeTrimming 1
-  set RTrim 0.2
-  set PtFracTrim 0.05
-
-  set ComputePruning 1
-  set ZcutPrun 0.1
-  set RcutPrun 0.5
-  set RPrun 0.8
-
   set ComputeSoftDrop 1
   set BetaSoftDrop 0.0
   set SymmetryCutSoftDrop 0.1
   set R0SoftDrop 0.8
 
-  set JetPTMin 200.0
+  set JetPTMin 15.0
 }
-
-
-
 
 ##################
 # Jet Energy Scale
@@ -791,6 +803,7 @@ module TreeWriter TreeWriter {
   add Branch HCal/eflowNeutralHadrons EFlowNeutralHadron Tower
 
   add Branch GenJetFinder/jets GenJet Jet
+  add Branch GenFatJetFinder/jets GenFatJet Jet
   add Branch GenMissingET/momentum GenMissingET MissingET
  
   add Branch UniqueObjectFinder/jets Jet Jet
