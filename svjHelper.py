@@ -101,6 +101,7 @@ class darkHadron():
         self.quarks.set(self.mass)
 
         self.dm = dm
+        self.rinv = rinv
         if self.rinv is None:
             self.rvis = 1
         else:
@@ -108,7 +109,7 @@ class darkHadron():
 
     def getLines(self):
         lines = ['{:d}:m0 = {:g}'.format(self.id,self.mass)]
-        lines += ['{:d}:'.format(self.id)+prop for prop in props]
+        lines += ['{:d}:'.format(self.id)+prop for prop in self.props]
         if self.rinv is not None:
             lines += self.invisibleDecay()
         lines += getattr(self, self.decay+'Decay')()
@@ -128,18 +129,21 @@ class darkHadron():
         return lines
 
     def simpleDecay(self):
+        theQuarks = self.quarks.get()
         # just pick down quarks
         theQuarks = [q for q in theQuarks if q.id==1]
         theQuarks[0].bf = self.rvis
         return self.visibleLines(theQuarks)
 
     def democraticDecay(self):
+        theQuarks = self.quarks.get()
         bfQuarks = (self.rvis)/float(len(theQuarks))
         for iq,q in enumerate(theQuarks):
             theQuarks[iq].bf = bfQuarks
         return self.visibleLines(theQuarks)
 
     def massInsertionDecay(self):
+        theQuarks = self.quarks.get()
         denom = sum([q.massrun**2 for q in theQuarks])
         # hack for really low masses
         if denom==0.: return self.democraticDecay()
@@ -152,7 +156,7 @@ class darkHadron():
         return lines
 
     def darkPionDecay(self):
-        lines = ['{:d}:addChannel = 1 1 101 {:d} {:d}'.format(self.decay_args[0],self.decay_args[1])]
+        lines = ['{:d}:addChannel = 1 1 101 {:d} {:d}'.format(self.id,self.decay_args[0],self.decay_args[1])]
         return lines
 
 class svjHelper():
@@ -171,7 +175,7 @@ class svjHelper():
         parser.add_argument("--spectrum",type=str,required=True,help="dark hadron spectrum scheme")
 
     def __init__(self,args):
-        for key,val in var(args):
+        for key,val in vars(args).items():
             setattr(self,key,val)
 
         # sanity checks
@@ -185,6 +189,7 @@ class svjHelper():
         self.mmax = self.mmed+1
 
         # set up spectrum
+        # todo: make this into a plugin system
         spectra = {
             "cms": [
                 darkHadron(51,0.0,'stable',props=['isResonance = false']),
@@ -196,10 +201,13 @@ class svjHelper():
                 darkHadron(4900213,self.mrho,'democratic',rinv=self.rinv,dm=53),
             ],
             "snowmass": [
+                darkHadron(51,0.0,'stable',props=['isResonance = false']),
+                darkHadron(52,0.0,'stable',props=['isResonance = false']),
+                darkHadron(53,0.0,'stable',props=['isResonance = false']),
                 darkHadron(4900111,self.mpi,'massInsertion',rinv=self.rinv,dm=51),
                 darkHadron(4900211,self.mpi,'massInsertion',rinv=self.rinv,dm=51),
-                darkHadron(4900113,self.mpi,'darkPion',decay_args[4900111,4900211]),
-                darkHadron(4900213,self.mpi,'darkPion',decay_args[4900211,4900211]),
+                darkHadron(4900113,self.mpi,'darkPion',decay_args=[4900111,4900211]),
+                darkHadron(4900213,self.mpi,'darkPion',decay_args=[4900211,4900211]),
             ]
         }
         if self.spectrum not in spectra:
@@ -273,14 +281,14 @@ class svjHelper():
             'HiddenValley:nFlav = {:d}'.format(self.Nf),
             'HiddenValley:probVector = {:g}'.format(self.pvector),
         ]
-        lines_decay = [dh.getLines() for dh in self.spectrum]
+        lines_decay = [line for dh in self.spectrum for line in dh.getLines()]
 
         lines = lines_channel[self.channel] + lines_HV + lines_decay
         return lines
 
     def getDelphesSettings(self,input):
-        HVEnergyFractions = ["  add EnergyFraction {{{}}} {{0}}".format(id) for id in self.stableIDs]
-        HVNuFilter = ["  add PdgCode {{{}}}".format(id) for id in self.stableIDs]
+        HVEnergyFractions = '\n'.join(["  add EnergyFraction {{{}}} {{0}}".format(id) for id in self.stableIDs])
+        HVNuFilter = '\n'.join(["  add PdgCode {{{}}}".format(id) for id in self.stableIDs])
 
         with open(input,'r') as infile:
             old_lines = Template(infile.read())

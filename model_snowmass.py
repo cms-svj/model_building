@@ -2,6 +2,7 @@ from magiconfig import MagiConfig
 import math
 
 model = MagiConfig()
+model.channel = 's'
 model.mmed = 1000
 model.Nc = 3
 model.Nf = 3

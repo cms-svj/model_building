@@ -6,11 +6,16 @@ from magiconfig import ArgumentParser, MagiConfig, MagiConfigOptions, ArgumentDe
 from svjHelper import svjHelper
 
 def separate_args(args,groups):
-    separated = {group.title : MagiConfig(**{a.dest:getattr(args,a,None) for a in group._group_actions}) for group in groups}
+    separated = {group.title : MagiConfig(**{a.dest:getattr(args,a.dest,None) for a in group._group_actions}) for group in groups}
     return separated
 
 if __name__=="__main__":
-    parser = ArgumentParser(config_options=MagiConfigOptions(), formatter_class=ArgumentDefaultsRawHelpFormatter)
+    parser = ArgumentParser(
+        config_options=MagiConfigOptions(
+            obj_args = ["-O","--obj"],
+        ),
+        formatter_class=ArgumentDefaultsRawHelpFormatter
+    )
 
     common = parser.add_argument_group("common")
     common.add_argument("--dir", type=str, default="models", help="output directory")
@@ -34,12 +39,11 @@ if __name__=="__main__":
     pythia_fname = os.path.join(outdir,"pythia_card.txt")
     with open(pythia_fname,'w') as file, fileinput.input(args["common"].pythia) as inputs:
         file.write('\n'.join(pythia_lines))
+        file.write('\n')
         for line in inputs:
             file.write(line)
 
     delphes_lines = helper.getDelphesSettings(args["common"].delphes)
     delphes_fname = os.path.join(outdir,"delphes_card.txt")
     with open(delphes_fname,'w') as file:
-        file.write('\n'.join(delphes_lines))
-        for line in inputs:
-            file.write(line)
+        file.write(delphes_lines)
