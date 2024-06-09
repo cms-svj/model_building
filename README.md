@@ -14,6 +14,16 @@ cd model_building
 source init.sh
 ```
 
+This repository is built on the [LCG 105](https://lcginfo.cern.ch/release_packages/105/x86_64-el9-gcc12-opt/) environment.
+Important software versions:
+* Pythia8 3.10
+* Delphes 3.5.1pre09
+* HepMC 2.06.11
+* ROOT 6.30.02
+* coffea 0.7.21
+* uproot 4.3.7
+* awkward 1.10.3
+
 ## Predefined model configurations
 
 A few predefined model configuration files are provided in the [configs](./configs) folder:
