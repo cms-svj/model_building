@@ -204,6 +204,15 @@ class svjHelper():
         parser.add_argument("--rinv",type=float,default=None,help="invisible fraction")
         parser.add_argument("--spectrum",type=str,required=True,help="dark hadron spectrum scheme")
 
+    @staticmethod
+    def build(config_path):
+        from magiconfig import ArgumentParser, MagiConfigOptions
+        parser = ArgumentParser(config_options=MagiConfigOptions())
+        svjHelper.add_arguments(parser)
+        args = parser.parse_args(['-C',config_path])
+        helper = svjHelper(args)
+        return helper
+
     def __init__(self,args):
         for key,val in vars(args).items():
             setattr(self,key,val)
@@ -219,22 +228,32 @@ class svjHelper():
         self.mmax = self.mmed+1
 
         # set up spectrum
-        self.spectrum = hvSpectrum().populate(self.spectrum, self)
-        self.stableIDs = [dh.id for dh in self.spectrum if dh.decay=='stable']
+        self.spectrumParticles = hvSpectrum().populate(self.spectrum, self)
+        self.stableIDs = [dh.id for dh in self.spectrumParticles if dh.decay=='stable']
 
-    def param_name(self,param):
-        return "{}-{:g}".format(param,getattr(self,param))
+        # metadata tracking
+        self.always_included = ["channel","mmed","Nc","Nf","scale","mq","mpi","mrho","pvector","spectrum"]
+        self.special_formats = {
+            "channel": "{1}-{0}",
+            "spectrum": "{}-{}",
+        }
+
+    def param_name(self,param,form="{}-{:g}"):
+        form = self.special_formats.get(param,"{}-{:g}")
+        return form.format(param,getattr(self,param))
 
     def name(self):
-        params = [
-            "{}-channel".format(self.channel),
-        ]
-        always_included = ["mmed","Nc","Nf","scale","mq","mpi","mrho","pvector"]
-        params.extend([self.param_name(p) for p in always_included])
+        params = [self.param_name(p) for p in self.always_included]
         if self.rinv is not None:
             params.append(self.param_name("rinv"))
         _name = '_'.join(params)
         return _name
+
+    def metadata(self):
+        metadict = {param:getattr(self,param) for param in self.always_included}
+        if self.rinv is not None:
+            metadict["rinv"] = self.rinv
+        return metadict
 
     def getPythiaSettings(self):
         lines_channel = {
@@ -284,7 +303,7 @@ class svjHelper():
             'HiddenValley:nFlav = {:d}'.format(self.Nf),
             'HiddenValley:probVector = {:g}'.format(self.pvector),
         ]
-        lines_decay = [line for dh in self.spectrum for line in dh.getLines()]
+        lines_decay = [line for dh in self.spectrumParticles for line in dh.getLines()]
 
         lines = lines_channel[self.channel] + lines_HV + lines_decay
         return lines
