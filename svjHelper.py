@@ -159,6 +159,36 @@ class darkHadron():
         lines = ['{:d}:addChannel = 1 1 101 {:d} {:d}'.format(self.id,self.decay_args[0],self.decay_args[1])]
         return lines
 
+class hvSpectrum():
+    def populate(self, name, helper):
+        if not hasattr(self, name+'Spectrum'):
+            raise ValueError("unknown spectrum {}".format(name))
+        return getattr(self, name+'Spectrum')(helper)
+
+    # helper for common invisible particles
+    def dmForRinv(self):
+        return [
+            darkHadron(51,0.0,'stable',props=['isResonance = false']),
+            darkHadron(52,0.0,'stable',props=['isResonance = false']),
+            darkHadron(53,0.0,'stable',props=['isResonance = false']),
+        ]
+
+    def cmsSpectrum(self, helper):
+        return self.dmForRinv() + [
+            darkHadron(4900111,helper.mpi,'massInsertion',rinv=helper.rinv,dm=51),
+            darkHadron(4900211,helper.mpi,'massInsertion',rinv=helper.rinv,dm=51),
+            darkHadron(4900113,helper.mrho,'democratic',rinv=helper.rinv,dm=53),
+            darkHadron(4900213,helper.mrho,'democratic',rinv=helper.rinv,dm=53),
+        ]
+
+    def snowmassSpectrum(self, helper):
+        return self.dmForRinv() + [
+            darkHadron(4900111,helper.mpi,'massInsertion',rinv=helper.rinv,dm=51),
+            darkHadron(4900211,helper.mpi,'massInsertion',rinv=helper.rinv,dm=51),
+            darkHadron(4900113,helper.mpi,'darkPion',decay_args=[4900111,4900211]),
+            darkHadron(4900213,helper.mpi,'darkPion',decay_args=[4900211,4900211]),
+        ]
+
 class svjHelper():
     @staticmethod
     def add_arguments(parser):
@@ -189,30 +219,7 @@ class svjHelper():
         self.mmax = self.mmed+1
 
         # set up spectrum
-        # todo: make this into a plugin system
-        spectra = {
-            "cms": [
-                darkHadron(51,0.0,'stable',props=['isResonance = false']),
-                darkHadron(52,0.0,'stable',props=['isResonance = false']),
-                darkHadron(53,0.0,'stable',props=['isResonance = false']),
-                darkHadron(4900111,self.mpi,'massInsertion',rinv=self.rinv,dm=51),
-                darkHadron(4900211,self.mpi,'massInsertion',rinv=self.rinv,dm=51),
-                darkHadron(4900113,self.mrho,'democratic',rinv=self.rinv,dm=53),
-                darkHadron(4900213,self.mrho,'democratic',rinv=self.rinv,dm=53),
-            ],
-            "snowmass": [
-                darkHadron(51,0.0,'stable',props=['isResonance = false']),
-                darkHadron(52,0.0,'stable',props=['isResonance = false']),
-                darkHadron(53,0.0,'stable',props=['isResonance = false']),
-                darkHadron(4900111,self.mpi,'massInsertion',rinv=self.rinv,dm=51),
-                darkHadron(4900211,self.mpi,'massInsertion',rinv=self.rinv,dm=51),
-                darkHadron(4900113,self.mpi,'darkPion',decay_args=[4900111,4900211]),
-                darkHadron(4900213,self.mpi,'darkPion',decay_args=[4900211,4900211]),
-            ]
-        }
-        if self.spectrum not in spectra:
-            raise ValueError("Unknown spectrum {}".format(self.spectrum))
-        self.spectrum = spectra[self.spectrum]
+        self.spectrum = hvSpectrum().populate(self.spectrum, self)
         self.stableIDs = [dh.id for dh in self.spectrum if dh.decay=='stable']
 
     def param_name(self,param):
@@ -220,7 +227,7 @@ class svjHelper():
 
     def name(self):
         params = [
-			"{}-channel".format(self.channel),
+            "{}-channel".format(self.channel),
         ]
         always_included = ["mmed","Nc","Nf","scale","mq","mpi","mrho","pvector"]
         params.extend([self.param_name(p) for p in always_included])
