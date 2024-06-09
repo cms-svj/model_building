@@ -215,19 +215,15 @@ class svjHelper():
         self.spectrum = spectra[self.spectrum]
         self.stableIDs = [dh.id for dh in self.spectrum if dh.decay=='stable']
 
-    def param_name(self,param,reverse=False):
-        args = [param,getattr(self,param)]
-        if reverse: args = reversed(args)
-        return "{}-{}".format(*args)
+    def param_name(self,param):
+        return "{}-{:g}".format(param,getattr(self,param))
 
     def name(self):
         params = [
-            self.param_name("channel",reverse=True)
+			"{}-channel".format(self.channel),
         ]
-        always_included = ["mmed","Nc","Nf","scale","mq","mpi","pvector"]
+        always_included = ["mmed","Nc","Nf","scale","mq","mpi","mrho","pvector"]
         params.extend([self.param_name(p) for p in always_included])
-        if self.mrho != self.mpi:
-            params.append(self.param_name("mrho"))
         if self.rinv is not None:
             params.append(self.param_name("rinv"))
         _name = '_'.join(params)

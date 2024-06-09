@@ -1,16 +1,16 @@
 from magiconfig import MagiConfig
 import math
 
-model = MagiConfig()
-model.channel = 's'
-model.mmed = 1000
-model.Nc = 3
-model.Nf = 3
-model.scale = 10
-model.mpi = 0.6*model.scale
-model.mq = (model.mpi/5.5)**2/model.scale + model.scale
-model.mrho = model.scale*math.sqrt(5.76+1.5*model.mpi**2/model.scale**2)
-model.pvector = 0.5
+config = MagiConfig()
+config.channel = 's'
+config.mmed = 1000
+config.Nc = 3
+config.Nf = 3
+config.scale = 10
+config.mpi = 0.6*config.scale
+config.mq = (config.mpi/5.5)**2/config.scale + config.scale
+config.mrho = config.scale*math.sqrt(5.76+1.5*config.mpi**2/config.scale**2)
+config.pvector = 0.5
 k = 1
-model.rinv = (6+k)/9
-model.spectrum = 'snowmass'
+config.rinv = (6+k)/9
+config.spectrum = 'snowmass'

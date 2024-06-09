@@ -11,9 +11,7 @@ def separate_args(args,groups):
 
 if __name__=="__main__":
     parser = ArgumentParser(
-        config_options=MagiConfigOptions(
-            obj_args = ["-O","--obj"],
-        ),
+        config_options=MagiConfigOptions(),
         formatter_class=ArgumentDefaultsRawHelpFormatter
     )
 
