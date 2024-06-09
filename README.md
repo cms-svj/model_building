@@ -35,3 +35,12 @@ This command will, in order:
 If the `--run` command is omitted, step 3 will be skipped.
 
 The input model configuration can be modified using command-line arguments, and the resulting configuration file will be generated along with the Pythia and Delphes cards.
+
+## Analysis
+
+The notebook [example_MT.ipynb](./example_MT.ipynb) shows an example of analyzing the generated events using [coffea](https://github.com/CoffeaTeam/coffea/):
+* applying selections
+* computing new quantities
+* filling histograms
+* making plots
+
