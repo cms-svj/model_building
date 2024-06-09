@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import os, fileinput
+import os, fileinput, subprocess, shlex, shutil, gzip
 from copy import deepcopy
 from magiconfig import ArgumentParser, MagiConfig, MagiConfigOptions, ArgumentDefaultsRawHelpFormatter
 from svjHelper import svjHelper
@@ -9,6 +9,14 @@ def separate_args(args,groups):
     separated = {group.title : MagiConfig(**{a.dest:getattr(args,a.dest,None) for a in group._group_actions}) for group in groups}
     return separated
 
+def run_cmd(cmd,log,verbose=False,shell=False):
+    if verbose:
+        print(cmd)
+    with open(log,'w') as logfile:
+        if not shell:
+            cmd = shlex.split(cmd)
+        subprocess.check_call(cmd,stdout=logfile,stderr=logfile,shell=shell)
+
 if __name__=="__main__":
     parser = ArgumentParser(
         config_options=MagiConfigOptions(),
@@ -16,6 +24,10 @@ if __name__=="__main__":
     )
 
     common = parser.add_argument_group("common")
+    common.add_argument("--run", type=int, default=0, help="run this many events through Pythia and Delphes")
+    print_group = common.add_mutually_exclusive_group()
+    print_group.add_argument("--verbose", default=False, action="store_true", help="increase verbosity of printouts")
+    print_group.add_argument("--quiet", default=False, action="store_true", help="suppress all printouts")
     common.add_argument("--dir", type=str, default="models", help="output directory")
     common.add_argument("--pythia", type=str, nargs='*', default=["cards/CMS_Common.txt","cards/CMS_Tune_CP5.txt"], help="additional settings for Pythia")
     common.add_argument("--delphes", type=str, default="cards/delphes_card_CMS.tcl", help="template card for Delphes")
@@ -31,17 +43,60 @@ if __name__=="__main__":
     outdir = os.path.join(args["common"].dir,name)
     os.makedirs(outdir, exist_ok=True)
 
-    parser.write_config(args_orig,os.path.join(outdir,"config.py"))
+    # absolute paths for files relative to current dir
+    pwd = os.getcwd()
+    args["common"].pythia = [os.path.join(pwd,txt) for txt in args["common"].pythia]
+    args["common"].delphes = os.path.join(pwd,args["common"].delphes)
+
+    # change to output dir
+    os.chdir(outdir)
+    if args["common"].verbose: print(f'cd {outdir}')
+
+    config_fname = "config.py"
+    parser.write_config(args_orig,config_fname)
+    if args["common"].verbose: print(f'wrote {config_fname}')
 
     pythia_lines = helper.getPythiaSettings()
-    pythia_fname = os.path.join(outdir,"pythia_card.txt")
+    pythia_lines.append('Main:numberOfEvents = {}'.format(args["common"].run))
+    pythia_fname = "pythia_card.txt"
     with open(pythia_fname,'w') as file, fileinput.input(args["common"].pythia) as inputs:
         file.write('\n'.join(pythia_lines))
         file.write('\n')
         for line in inputs:
             file.write(line)
+    if args["common"].verbose: print(f'wrote {pythia_fname}')
 
     delphes_lines = helper.getDelphesSettings(args["common"].delphes)
-    delphes_fname = os.path.join(outdir,"delphes_card.txt")
+    delphes_fname = "delphes_card.txt"
     with open(delphes_fname,'w') as file:
         file.write(delphes_lines)
+    if args["common"].verbose: print(f'wrote {delphes_fname}')
+
+    if args["common"].run>0:
+        # step 1: pythia
+        log_fname = "log_pythia8.log"
+        hepmc_fname = "events.hepmc"
+        pythia_exe = os.path.expandvars("$PYTHIA8/examples/main42")
+        pythia_cmd = f'{pythia_exe} {pythia_fname} {hepmc_fname}'
+        if not args["common"].quiet: print(f'Running Pythia ({log_fname})')
+        run_cmd(pythia_cmd, log_fname, args["common"].verbose)
+
+        # step 1.5: compress events
+        hepmc_fname_gz = hepmc_fname+".gz"
+        if not args["common"].quiet: print("Compressing Pythia output")
+        with open(hepmc_fname,'rb') as ifile, gzip.open(hepmc_fname_gz,'wb') as ofile:
+            shutil.copyfileobj(ifile, ofile)
+        os.remove(hepmc_fname)
+        if args["common"].verbose: print(f'wrote {hepmc_fname_gz}')
+
+        # step 2: delphes
+        log_fname = "log_delphes.log"
+        delphes_exe = "DelphesHepMC2"
+        root_fname = "events.root"
+        if os.path.exists(root_fname):
+            if args["common"].verbose: print(f'removing old {root_fname}')
+            os.remove(root_fname)
+        delphes_cmd = f'gunzip -c {hepmc_fname_gz} | {delphes_exe} {delphes_fname} {root_fname}'
+        if not args["common"].quiet: print(f'Running Delphes ({log_fname})')
+        run_cmd(delphes_cmd, log_fname, args["common"].verbose, shell=True)
+        if args["common"].verbose: print(f'wrote {root_fname}')
