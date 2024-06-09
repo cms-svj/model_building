@@ -34,15 +34,17 @@ A few predefined model configuration files are provided in the [configs](./confi
 
 An example run command is:
 ```bash
-./run_model -C configs/model_cms.py --run 10 --verbose
+./run_model -C configs/model_cms.py --steps all --events 10 --verbose
 ```
 
 This command will, in order:
 1. load the CMS model configuration
 2. generate the Pythia and Delphes cards for this configuration
-3. run Pythia and Delphes
+3. run Pythia
+4. run Delphes
 
-If the `--run` command is omitted, step 3 will be skipped.
+If the `--steps` command is omitted, items 3 and 4 will be skipped.
+Items 3 and 4 can be run separately by specifying just one of them in `--steps`.
 
 The input model configuration can be modified using command-line arguments, and the resulting configuration file will be generated along with the Pythia and Delphes cards.
 

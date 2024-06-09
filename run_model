@@ -23,8 +23,11 @@ if __name__=="__main__":
         formatter_class=ArgumentDefaultsRawHelpFormatter
     )
 
+    allowed_steps = ['pythia','delphes']
+
     common = parser.add_argument_group("common")
-    common.add_argument("--run", type=int, default=0, help="run this many events through Pythia and Delphes")
+    common.add_argument("--steps", type=str, nargs='*', default=[], choices=allowed_steps+['all'], help="run these steps")
+    common.add_argument("--events", type=int, default=0, help="generate this many events in Pythia")
     print_group = common.add_mutually_exclusive_group()
     print_group.add_argument("--verbose", default=False, action="store_true", help="increase verbosity of printouts")
     print_group.add_argument("--quiet", default=False, action="store_true", help="suppress all printouts")
@@ -37,6 +40,11 @@ if __name__=="__main__":
 
     args_orig = parser.parse_args()
     args = separate_args(args_orig,[common,model])
+
+    if 'all' in args["common"].steps:
+        args["common"].steps = allowed_steps
+    if 'pythia' in args["common"].steps and not args["common"].events>0:
+        raise RuntimeError("No events requested to generate")
 
     helper = svjHelper(args["model"])
     name = helper.name()
@@ -57,7 +65,8 @@ if __name__=="__main__":
     if args["common"].verbose: print(f'wrote {config_fname}')
 
     pythia_lines = helper.getPythiaSettings()
-    pythia_lines.append('Main:numberOfEvents = {}'.format(args["common"].run))
+    if 'pythia' in args["common"].steps:
+        pythia_lines.append('Main:numberOfEvents = {}'.format(args["common"].events))
     pythia_fname = "pythia_card.txt"
     with open(pythia_fname,'w') as file, fileinput.input(args["common"].pythia) as inputs:
         file.write('\n'.join(pythia_lines))
@@ -72,22 +81,29 @@ if __name__=="__main__":
         file.write(delphes_lines)
     if args["common"].verbose: print(f'wrote {delphes_fname}')
 
-    if args["common"].run>0:
+    # intermediate output filenames
+    hepmc_fname = "events.hepmc"
+    hepmc_fname_gz = hepmc_fname+".gz"
+
+    if 'pythia' in args["common"].steps:
         # step 1: pythia
         log_fname = "log_pythia8.log"
-        hepmc_fname = "events.hepmc"
         pythia_exe = os.path.expandvars("$PYTHIA8/examples/main42")
         pythia_cmd = f'{pythia_exe} {pythia_fname} {hepmc_fname}'
         if not args["common"].quiet: print(f'Running Pythia ({log_fname})')
         run_cmd(pythia_cmd, log_fname, args["common"].verbose)
 
         # step 1.5: compress events
-        hepmc_fname_gz = hepmc_fname+".gz"
         if not args["common"].quiet: print("Compressing Pythia output")
         with open(hepmc_fname,'rb') as ifile, gzip.open(hepmc_fname_gz,'wb') as ofile:
             shutil.copyfileobj(ifile, ofile)
         os.remove(hepmc_fname)
         if args["common"].verbose: print(f'wrote {hepmc_fname_gz}')
+
+    if 'delphes' in args["common"].steps:
+        # check for input
+        if not os.path.exists(hepmc_fname_gz):
+            raise RuntimeError(f'Could not find Delphes input {hepmc_fname_gz}')
 
         # step 2: delphes
         log_fname = "log_delphes.log"
