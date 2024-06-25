@@ -1,5 +1,6 @@
-import math
+import math, os
 from string import Template
+from pathlib import Path
 
 class quark(object):
     def __init__(self,id,mass):
@@ -189,7 +190,46 @@ class hvSpectrum():
             darkHadron(4900213,helper.mpi,'darkPion',decay_args=[4900211,4900211]),
         ]
 
-class svjHelper():
+class baseHelper():
+    @staticmethod
+    def add_arguments(parser):
+        pass
+
+    @classmethod
+    def build(cls,config_path):
+        from magiconfig import ArgumentParser, MagiConfigOptions
+        parser = ArgumentParser(config_options=MagiConfigOptions())
+        cls.add_arguments(parser)
+        args = parser.parse_args(['-C',config_path])
+        helper = cls(args)
+        return helper
+
+    def __init__(self,args):
+        for key,val in vars(args).items():
+            setattr(self,key,val)
+
+    def name(self):
+        pass
+
+    def metadata(self):
+        return {}
+
+    def getPythiaSettings(self):
+        pass
+
+    def getDelphesSettings(self,input):
+        HVEnergyFractions = '\n'.join(["  add EnergyFraction {{{}}} {{0}}".format(id) for id in self.stableIDs])
+        HVNuFilter = '\n'.join(["  add PdgCode {{{}}}".format(id) for id in self.stableIDs])
+
+        with input.open() as infile:
+            old_lines = Template(infile.read())
+            new_lines = old_lines.safe_substitute(
+                HVEnergyFractions = HVEnergyFractions,
+                HVNuFilter = HVNuFilter,
+            )
+        return new_lines
+
+class svjHelper(baseHelper):
     @staticmethod
     def add_arguments(parser):
         parser.add_argument("--channel",type=str,required=True,help="production channel")
@@ -204,18 +244,8 @@ class svjHelper():
         parser.add_argument("--rinv",type=float,default=None,help="invisible fraction")
         parser.add_argument("--spectrum",type=str,required=True,help="dark hadron spectrum scheme")
 
-    @staticmethod
-    def build(config_path):
-        from magiconfig import ArgumentParser, MagiConfigOptions
-        parser = ArgumentParser(config_options=MagiConfigOptions())
-        svjHelper.add_arguments(parser)
-        args = parser.parse_args(['-C',config_path])
-        helper = svjHelper(args)
-        return helper
-
     def __init__(self,args):
-        for key,val in vars(args).items():
-            setattr(self,key,val)
+        super().__init__(args)
 
         # sanity checks
         if self.mrho is None: self.mrho = self.mpi
@@ -238,19 +268,20 @@ class svjHelper():
             "spectrum": "{}-{}",
         }
 
-    def param_name(self,param,form="{}-{:g}"):
+    def _param_name(self,param,form="{}-{:g}"):
         form = self.special_formats.get(param,"{}-{:g}")
         return form.format(param,getattr(self,param))
 
     def name(self):
-        params = [self.param_name(p) for p in self.always_included]
+        params = [self._param_name(p) for p in self.always_included]
         if self.rinv is not None:
-            params.append(self.param_name("rinv"))
+            params.append(self._param_name("rinv"))
         _name = '_'.join(params)
         return _name
 
     def metadata(self):
         metadict = {param:getattr(self,param) for param in self.always_included}
+        metadict["stableIDs"] = self.stableIDs
         if self.rinv is not None:
             metadict["rinv"] = self.rinv
         return metadict
@@ -308,14 +339,25 @@ class svjHelper():
         lines = lines_channel[self.channel] + lines_HV + lines_decay
         return lines
 
-    def getDelphesSettings(self,input):
-        HVEnergyFractions = '\n'.join(["  add EnergyFraction {{{}}} {{0}}".format(id) for id in self.stableIDs])
-        HVNuFilter = '\n'.join(["  add PdgCode {{{}}}".format(id) for id in self.stableIDs])
+class extHelper(baseHelper):
+    @staticmethod
+    def add_arguments(parser):
+        parser.add_argument("--card", type=str, required=True, help="external Pythia card")
+        parser.add_argument("--stableIDs", type=int, nargs='*', default=[], help="list of stable PDG IDs")
 
-        with open(input,'r') as infile:
-            old_lines = Template(infile.read())
-            new_lines = old_lines.safe_substitute(
-                HVEnergyFractions = HVEnergyFractions,
-                HVNuFilter = HVNuFilter,
-            )
-        return new_lines
+    def __init__(self,args):
+        super().__init__(args)
+        self.card = Path(self.card).absolute()
+
+    def name(self):
+        return self.card.stem
+
+    def metadata(self):
+        metadict = {}
+        metadict["stableIDs"] = self.stableIDs
+        return metadict
+
+    def getPythiaSettings(self):
+        with self.card.open() as infile:
+            lines = [line.rstrip() for line in infile]
+            return lines

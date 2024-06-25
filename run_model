@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 
 import os, fileinput, subprocess, shlex, shutil, gzip
+from pathlib import Path
+from contextlib import nullcontext
 from copy import deepcopy
 from magiconfig import ArgumentParser, MagiConfig, MagiConfigOptions, ArgumentDefaultsRawHelpFormatter
-from svjHelper import svjHelper
+from svjHelper import svjHelper, extHelper
 
 def separate_args(args,groups):
     separated = {group.title : MagiConfig(**{a.dest:getattr(args,a.dest,None) for a in group._group_actions}) for group in groups}
@@ -18,14 +20,11 @@ def run_cmd(cmd,log,verbose=False,shell=False):
         subprocess.check_call(cmd,stdout=logfile,stderr=logfile,shell=shell)
 
 if __name__=="__main__":
-    parser = ArgumentParser(
-        config_options=MagiConfigOptions(),
-        formatter_class=ArgumentDefaultsRawHelpFormatter
-    )
+    _parser_common = ArgumentParser(add_help=False)
 
     allowed_steps = ['pythia','delphes']
 
-    common = parser.add_argument_group("common")
+    common = _parser_common.add_argument_group("common")
     common.add_argument("--steps", type=str, nargs='*', default=[], choices=allowed_steps+['all'], help="run these steps")
     common.add_argument("--events", type=int, default=0, help="generate this many events in Pythia")
     print_group = common.add_mutually_exclusive_group()
@@ -35,26 +34,42 @@ if __name__=="__main__":
     common.add_argument("--pythia", type=str, nargs='*', default=["cards/CMS_Common.txt","cards/CMS_Tune_CP5.txt"], help="additional settings for Pythia")
     common.add_argument("--delphes", type=str, default="cards/delphes_card_CMS.tcl", help="template card for Delphes")
 
-    model = parser.add_argument_group("model")
-    svjHelper.add_arguments(model)
+    parser = ArgumentParser(
+        formatter_class=ArgumentDefaultsRawHelpFormatter
+    )
+    subparsers = parser.add_subparsers(dest="model_type")
+    helpers = {
+        "helper": svjHelper,
+        "external": extHelper,
+    }
+    parsers = {}
+    model_groups = {}
+    for model_type in helpers.keys():
+        parsers[model_type] = subparsers.add_parser(model_type, config_options=MagiConfigOptions(), parents=[_parser_common])
+        model_groups[model_type] = parsers[model_type].add_argument_group("model")
+        helpers[model_type].add_arguments(model_groups[model_type])
+        parsers[model_type].set_defaults(model_type=model_type)
 
     args_orig = parser.parse_args()
-    args = separate_args(args_orig,[common,model])
+    model_type = args_orig.model_type
+    helper_class = helpers[model_type]
+    args = separate_args(args_orig,[common,model_groups[model_type]])
 
     if 'all' in args["common"].steps:
         args["common"].steps = allowed_steps
     if 'pythia' in args["common"].steps and not args["common"].events>0:
         raise RuntimeError("No events requested to generate")
+    if args["common"].pythia==['']: # filled by default, turn this into empty
+        args["common"].pythia = []
 
-    helper = svjHelper(args["model"])
+    # absolute paths for files relative to current dir
+    args["common"].pythia = [Path(txt).absolute() for txt in args["common"].pythia]
+    args["common"].delphes = Path(args["common"].delphes).absolute()
+
+    helper = helper_class(args["model"])
     name = helper.name()
     outdir = os.path.join(args["common"].dir,name)
     os.makedirs(outdir, exist_ok=True)
-
-    # absolute paths for files relative to current dir
-    pwd = os.getcwd()
-    args["common"].pythia = [os.path.join(pwd,txt) for txt in args["common"].pythia]
-    args["common"].delphes = os.path.join(pwd,args["common"].delphes)
 
     # change to output dir
     os.chdir(outdir)
@@ -68,11 +83,12 @@ if __name__=="__main__":
     if 'pythia' in args["common"].steps:
         pythia_lines.append('Main:numberOfEvents = {}'.format(args["common"].events))
     pythia_fname = "pythia_card.txt"
-    with open(pythia_fname,'w') as file, fileinput.input(args["common"].pythia) as inputs:
+    with open(pythia_fname,'w') as file, (fileinput.input(args["common"].pythia) if len(args["common"].pythia)>0 else nullcontext()) as inputs:
         file.write('\n'.join(pythia_lines))
         file.write('\n')
-        for line in inputs:
-            file.write(line)
+        if inputs is not None:
+            for line in inputs:
+                file.write(line)
     if args["common"].verbose: print(f'wrote {pythia_fname}')
 
     delphes_lines = helper.getDelphesSettings(args["common"].delphes)

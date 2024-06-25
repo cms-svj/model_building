@@ -34,7 +34,7 @@ A few predefined model configuration files are provided in the [configs](./confi
 
 An example run command is:
 ```bash
-./run_model -C configs/model_cms.py --steps all --events 10 --verbose
+./run_model helper -C configs/model_cms.py --steps all --events 10 --verbose
 ```
 
 This command will, in order:
@@ -47,6 +47,16 @@ If the `--steps` command is omitted, items 3 and 4 will be skipped.
 Items 3 and 4 can be run separately by specifying just one of them in `--steps`.
 
 The input model configuration can be modified using command-line arguments, and the resulting configuration file will be generated along with the Pythia and Delphes cards.
+
+### Alternative method
+
+An external Pythia card can be used (instead of generating a model by providing the helper with a parameter configuration):
+```bash
+./run_model external --card my_card.cmnd --stableIDs 53 4900211 --pythia '' --steps all --events 10 --verbose
+```
+
+As shown, the list of stable particle IDs must be provided manually in order for the Delphes output to be correct.
+(The argument `--pythia ''` prevents appending common settings to the Pythia card, which are included by default.)
 
 ## Analysis
 
