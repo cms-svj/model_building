@@ -247,8 +247,9 @@ class baseHelper():
         pass
 
     def getDelphesSettings(self,input):
+        stableIDs_with_neg = self.stableIDs + [-1*id for id in self.stableIDs]
         HVEnergyFractions = '\n'.join(["  add EnergyFraction {{{}}} {{0}}".format(id) for id in self.stableIDs])
-        HVNuFilter = '\n'.join(["  add PdgCode {{{}}}".format(id) for id in self.stableIDs])
+        HVNuFilter = '\n'.join(["  add PdgCode {{{}}}".format(id) for id in stableIDs_with_neg])
 
         with input.open() as infile:
             old_lines = Template(infile.read())
