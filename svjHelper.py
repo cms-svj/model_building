@@ -205,10 +205,10 @@ class hvSpectrum():
 
     def snowmassSpectrum(self, helper):
         return self.dmForRinv() + [
-            darkHadron(4900111,helper.mpi,'massInsertion',rinv=helper.rinv,dm=51),
-            darkHadron(4900211,helper.mpi,'massInsertion',rinv=helper.rinv,dm=51),
-            darkHadron(4900113,helper.mpi,'darkPion',decay_args=[4900111,4900211]),
-            darkHadron(4900213,helper.mpi,'darkPion',decay_args=[4900211,4900211]),
+            darkHadron(4900111,helper.mpi,'massInsertion',rinv=helper.rinv,dm=53),
+            darkHadron(4900211,helper.mpi,'stable'),
+            darkHadron(4900113,helper.mpi,'darkPion',decay_args=[4900211,-4900211]),
+            darkHadron(4900213,helper.mpi,'darkPion',decay_args=[4900111,4900211]),
         ]
 
 class baseHelper():

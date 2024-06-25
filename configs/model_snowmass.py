@@ -11,6 +11,7 @@ config.mpi = 0.6*config.scale
 config.mq = mqconst_snowmass(mpi=config.mpi, scale=config.scale)
 config.mrho = mrho_snowmass(mpi=config.mpi, scale=config.scale)
 config.pvector = 0.5
+# this rinv is only applied to diagonal pions; overall rinv value is (6+k)/9
 k = 1
-config.rinv = (6+k)/9
+config.rinv = k/3
 config.spectrum = 'snowmass'
