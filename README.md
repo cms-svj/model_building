@@ -52,10 +52,10 @@ The input model configuration can be modified using command-line arguments, and 
 
 An external Pythia card can be used (instead of generating a model by providing the helper with a parameter configuration):
 ```bash
-./run_model external --card my_card.cmnd --stableIDs 53 4900211 --pythia '' --steps all --events 10 --verbose
+./run_model external --card my_card.cmnd --stableIDs 53 4900211 --darkHadronIDs 4900111 4900113 4900211 4900213 --pythia '' --steps all --events 10 --verbose
 ```
 
-As shown, the list of stable particle IDs must be provided manually in order for the Delphes output to be correct.
+As shown, the lists of stable particle IDs and dark hadron IDs must be provided manually in order for the Delphes output to be correct.
 (The argument `--pythia ''` prevents appending common settings to the Pythia card, which are included by default.)
 
 ## Analysis

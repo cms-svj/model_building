@@ -109,12 +109,13 @@ class quarklist(object):
         return [q for q in self.qlist if (q.active if active else q.on)]
 
 class darkHadron():
-    def __init__(self, id, mass, decay, props=[], rinv=None, dm=None, decay_args=None):
+    def __init__(self, id, mass, decay, props=[], rinv=None, dm=None, decay_args=None, placeholder=False):
         self.id = id
         self.mass = mass
         self.decay = decay
         self.decay_args = decay_args
         self.props = props
+        self.placeholder = placeholder
         if not hasattr(self, self.decay+'Decay'):
             raise ValueError("unknown decay {} for id {}".format(self.decay, self.id))
 
@@ -247,15 +248,24 @@ class baseHelper():
         pass
 
     def getDelphesSettings(self,input):
-        stableIDs_with_neg = self.stableIDs + [-1*id for id in self.stableIDs]
+        def add_neg(ids):
+            return ids + [-1*id for id in ids]
+
+        def pdg_lines(ids):
+            return ["  add PdgCode {{{}}}".format(id) for id in ids]
+
         HVEnergyFractions = '\n'.join(["  add EnergyFraction {{{}}} {{0}}".format(id) for id in self.stableIDs])
-        HVNuFilter = '\n'.join(["  add PdgCode {{{}}}".format(id) for id in stableIDs_with_neg])
+        stableIDs_with_neg = add_neg(self.stableIDs)
+        HVNuFilter = '\n'.join(pdg_lines(stableIDs_with_neg))
+        darkHadronIDs_with_neg = add_neg(self.darkHadronIDs)
+        HVDarkHadronFilter = '\n'.join(pdg_lines(darkHadronIDs_with_neg))
 
         with input.open() as infile:
             old_lines = Template(infile.read())
             new_lines = old_lines.safe_substitute(
                 HVEnergyFractions = HVEnergyFractions,
                 HVNuFilter = HVNuFilter,
+                HVDarkHadronFilter = HVDarkHadronFilter,
             )
         return new_lines
 
@@ -289,6 +299,7 @@ class svjHelper(baseHelper):
 
         # set up spectrum
         self.spectrumParticles = hvSpectrum().populate(self.spectrum, self)
+        self.darkHadronIDs = [dh.id for dh in self.spectrumParticles if not dh.placeholder]
         self.stableIDs = [dh.id for dh in self.spectrumParticles if dh.decay=='stable']
 
         # metadata tracking
@@ -312,6 +323,7 @@ class svjHelper(baseHelper):
     def metadata(self):
         metadict = {param:getattr(self,param) for param in self.always_included}
         metadict["stableIDs"] = self.stableIDs
+        metadict["darkHadronIDs"] = self.darkHadronIDs
         if self.rinv is not None:
             metadict["rinv"] = self.rinv
         return metadict
@@ -374,6 +386,7 @@ class extHelper(baseHelper):
     def add_arguments(parser):
         parser.add_argument("--card", type=str, required=True, help="external Pythia card")
         parser.add_argument("--stableIDs", type=int, nargs='*', default=[], help="list of stable PDG IDs")
+        parser.add_argument("--darkHadronIDs", type=int, nargs='*', default=[], help="list of dark hadron PDG IDs")
 
     def __init__(self,args):
         super().__init__(args)
@@ -385,6 +398,7 @@ class extHelper(baseHelper):
     def metadata(self):
         metadict = {}
         metadict["stableIDs"] = self.stableIDs
+        metadict["darkHadronIDs"] = self.darkHadronIDs
         return metadict
 
     def getPythiaSettings(self):

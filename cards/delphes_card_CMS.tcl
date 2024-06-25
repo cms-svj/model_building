@@ -40,6 +40,8 @@ set ExecutionPath {
   GenJetFinder
   GenFatJetFinder
   GenMissingET
+  DarkHadronFilter
+  DarkHadronJetFinder
   
   FastJetFinder
   FatJetFinder
@@ -601,7 +603,6 @@ module PdgCodeFilter NeutrinoFilter {
 $HVNuFilter
 }
 
-
 #####################
 # MC truth jet finder
 #####################
@@ -649,7 +650,45 @@ module Merger GenMissingET {
   set MomentumOutputArray momentum
 }
 
+####################
+# Dark hadron finder
+####################
 
+module PdgCodeFilter DarkHadronFilter {
+
+  set InputArray Delphes/allParticles
+  set OutputArray filteredParticles
+
+  set PTMin 0.0
+  set Invert 1
+
+$HVDarkHadronFilter
+}
+
+############################
+# Dark hadron jet clustering
+############################
+
+module FastJetFinder DarkHadronJetFinder {
+  set InputArray DarkHadronFilter/filteredParticles
+
+  set OutputArray jets
+
+  # algorithm: 1 CDFJetClu, 2 MidPoint, 3 SIScone, 4 kt, 5 Cambridge/Aachen, 6 antikt
+  set JetAlgorithm 6
+  set ParameterR 0.8
+
+  set ComputeNsubjettiness 1
+  set Beta 1.0
+  set AxisMode 4
+
+  set ComputeSoftDrop 1
+  set BetaSoftDrop 0.0
+  set SymmetryCutSoftDrop 0.1
+  set R0SoftDrop 0.8
+
+  set JetPTMin 15.0
+}
 
 ############
 # Jet finder
@@ -794,6 +833,7 @@ module UniqueObjectFinder UniqueObjectFinder {
 module TreeWriter TreeWriter {
 # add Branch InputArray BranchName BranchClass
   add Branch Delphes/allParticles GenParticle GenParticle
+  add Branch NeutrinoFilter/filteredParticles GenCandidate GenParticle
 
   add Branch TrackMerger/tracks Track Track
   add Branch Calorimeter/towers Tower Tower
@@ -807,7 +847,11 @@ module TreeWriter TreeWriter {
   add Branch GenJetFinder/jets GenJet Jet
   add Branch GenFatJetFinder/jets GenFatJet Jet
   add Branch GenMissingET/momentum GenMissingET MissingET
- 
+
+  # dark hadron jet collections
+  add Branch DarkHadronFilter/filteredParticles DarkHadronCandidate GenParticle
+  add Branch DarkHadronJetFinder/jets DarkHadronJet Jet
+
   add Branch UniqueObjectFinder/jets Jet Jet
   add Branch UniqueObjectFinder/electrons Electron Electron
   add Branch UniqueObjectFinder/photons Photon Photon
