@@ -12,4 +12,4 @@ config.mq = mqconst_snowmass(mpi=config.mpi, scale=config.scale)
 config.mrho = mrho_snowmass(mpi=config.mpi, scale=config.scale)
 config.pvector = 0.5
 config.rinv = 0.3
-config.spectrum = 'snowmass'
+config.spectrum = 'snowmass_cmslike'
