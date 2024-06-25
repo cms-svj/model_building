@@ -2,6 +2,27 @@ import math, os
 from string import Template
 from pathlib import Path
 
+# utilities for simple calculations
+
+# "empirical" formula from CMS search to maximize dark hadron yield
+# (see 2203.09503 Section 2.2.3 for details)
+def scale_cms(*, mpi):
+    return 3.2*math.pow(mpi,0.8)
+
+# current quark mass, 2203.09503 eq. 14
+def mq_snowmass(*, mpi, scale):
+    return (mpi/5.5)**2/scale
+
+# constituent quark mass (used in Pythia), 2203.09503 Section 4.1.4
+def mqconst_snowmass(*, mpi, scale):
+    return mq_snowmass(mpi=mpi, scale=scale) + scale
+
+# 2203.09503 eq. 14
+def mrho_snowmass(*, mpi, scale):
+    return scale*math.sqrt(5.76+1.5*mpi**2/scale**2)
+
+# classes for helper
+
 class quark(object):
     def __init__(self,id,mass):
         self.id = id
