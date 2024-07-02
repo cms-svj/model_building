@@ -25,7 +25,7 @@ def normalize_angle(angle):
     angle = np.where(angle >= np.pi, angle - 2 * np.pi, angle)
     return angle
 
-def histogram(filename, model_name):                    
+def histogram(filename, dark_hadron_ids, stable_particle_ids):                    
     DelphesSchema.mixins["FatJet"] = "Jet"
     Events = NanoEventsFactory.from_root(
                 file=filename,
@@ -44,27 +44,21 @@ def histogram(filename, model_name):
     # transverse mass calculation
     E1 = ET(events.Dijet)
     E2 = events.MissingET.MET
-    MTsq = (E1+E2)**2-(events.Dijet.px+events.MissingET.px)**2-(events.Dijet.py+events.MissingET.py)
+    MTsq = (E1+E2)**2-(events.Dijet.px+events.MissingET.px)**2-(events.Dijet.py+events.MissingET.py)**2
     events["MT"] = np.sqrt(MTsq, where=MTsq>=0)
             
     # 4-vectors for dijet
-    events["Jet_pt"] = events.Dijet.pt
-    events["Jet_eta"] = events.Dijet.eta
-    events["Jet_phi"] = events.Dijet.phi
-    events["Jet_mass"] = events.Dijet.mass
-    # Other quantites to be plotted
+    events["Dijet_pt"] = events.Dijet.pt
+    events["Dijet_eta"] = events.Dijet.eta
+    events["Dijet_phi"] = events.Dijet.phi
+    events["Dijet_mass"] = events.Dijet.mass
+
     events["MET"] = events.MissingET.MET
-    events["DeltaEta"] = events.FatJet.DeltaEta
-    events["DeltaPhi"] = events.FatJet.DeltaPhi
 
     ## For plotting individually for jet1 and jet2
-    leading_jets = events.FatJet[:, :2]
 
-    jet1_mask = leading_jets[:, 0].pt >= leading_jets[:, 1].pt
-    jet2_mask = ~jet1_mask
-
-    events["Jet1"] = ak.where(jet1_mask, leading_jets[:, 0], leading_jets[:, 1])
-    events["Jet2"] = ak.where(jet2_mask, leading_jets[:, 0], leading_jets[:, 1])
+    events["Jet1"] = events.FatJet[:,0]
+    events["Jet2"] = events.Fetjet[:,1]
 
     # 4-vectors for jet1 and jet2
     events["Jet1_pt"] = events["Jet1"].pt
@@ -86,8 +80,6 @@ def histogram(filename, model_name):
     events["DeltaPhi_MET_Jet2"] = np.abs(normalize_angle(events.MissingET.phi - events["Jet2_phi"]))
 
     # Stable inv frac
-    dark_hadron_ids = [4900111, 4900113, 4900211, 4900213]
-    stable_particle_ids = [51, 52, 53]
     pid = events.Particle["PID"]
     d1 = events.Particle["D1"]
 
@@ -105,11 +97,9 @@ def histogram(filename, model_name):
         is_dark_daughter = is_dark_daughter | (np.abs(dark_daughter)==dsid)
 
     stability = [None]*len(events)
-    for i in range(len(pid)): 
-        if ak.sum(is_dark[i])!=0:
-            stability[i] = ak.sum(is_dark_daughter[i])/ak.sum(is_dark[i])
-
-    #stability = [ak.sum(is_dark_daughter[i])/ak.sum(is_dark[i]) for i in range(len(pid)) if ak.sum(is_dark[i])!=0]
+    numer = ak.sum(is_dark_daughter, axis=0)
+    denom = ak.sum(is_dark, axis=0)
+    stability = np.divide(numer, denom, out=np.zeros_like(numer), where=denom>0)
 
     # Add the invisible fraction to the events
     events["stable_invisible_fraction"] = stability
@@ -121,46 +111,27 @@ def histogram(filename, model_name):
     # Histogram
 
     # Creating hist objects
-    hists_mt = fill_hist("MT",25,0,1500,r"$m_{\text{T}}$ [GeV]",Events)
-    hists_pt = fill_hist("Jet_pt",50,0,1000,r"$p_{\text{T}}$ [GeV]",Events)
-    hists_pt1 = fill_hist("Jet1_pt",50,0,1000,r"$Jet_1\_p_{\text{T}}$ [GeV]",Events)
-    hists_pt2 = fill_hist("Jet2_pt",50,0,1000,r"$Jet_2\_p_{\text{T}}$ [GeV]",Events)
-    hists_met = fill_hist("MET",50,0,1000,r"$p_{\text{T},miss}$ [GeV]",Events)
-    hists_eta = fill_hist("Jet_eta",50,-10,10,r"$Jet_{\eta}$ [GeV]",Events)
-    hists_eta1 = fill_hist("Jet1_eta",50,-6,6,r"$\eta_{Jet1}$",Events)
-    hists_eta2 = fill_hist("Jet2_eta",50,-6,6,r"$\eta_{Jet2}$",Events)
-    hists_deltaeta = fill_hist("DeltaEta",35,0,8.0,r"$\Delta\eta$",Events)
-    hists_phi = fill_hist("Jet_phi",25,-4,4,r"$Jet_{\phi}$",Events)
-    hists_phi1 = fill_hist("Jet1_phi",25,-4,4,r"$\phi_{Jet1}$",Events)
-    hists_phi2 = fill_hist("Jet2_phi",25,-4,4,r"$\phi_{Jet2}$",Events)
-    hists_deltaphi = fill_hist("DeltaPhi",20,0,3.5,r"$\Delta\Phi$",Events)
-    hists_mass = fill_hist("Jet_mass",50,0,2300,r"$Jet_{mass}$ [GeV]",Events)
-    hists_mass1 = fill_hist("Jet1_mass",50,0,250,r"$Jet1_{mass}$ [GeV]",Events)
-    hists_mass2 = fill_hist("Jet2_mass",50,0,250,r"$Jet2_{mass}$ [GeV]",Events)
-    hists_deltaphi1 = fill_hist("DeltaPhi_MET_Jet1",25,0,3.5,r"$\Delta\phi\_P_{t,miss}\_Jet_1$",Events)
-    hists_deltaphi2 = fill_hist("DeltaPhi_MET_Jet2",25,0,3.5,r"$\Delta\phi\_P_{t,miss}\_Jet_2$",Events)
-    hists_if = fill_hist("stable_invisible_fraction",25,0,1,r"stable_invisible_fraction",Events)
 
     hist_dict = {
-        "Jet_mt": hists_mt,
-        "Jet_pt": hists_pt,
-        "Jet1_pt": hists_pt1,
-        "Jet2_pt": hists_pt2,
-        "MET": hists_met,
-        "Jet_eta": hists_eta,
-        "Jet1_eta": hists_eta1,
-        "Jet2_eta": hists_eta2,
-        "Jet_phi": hists_phi,
-        "Jet1_phi": hists_phi1,
-        "Jet2_phi": hists_phi2,
-        "Jet_mass": hists_mass,
-        "Jet1_mass": hists_mass1,
-        "Jet2_mass": hists_mass2,
-        "DeltaEta": hists_deltaeta,
-        "DeltaPhi": hists_deltaphi,
-        "DeltaPhi_MET_Jet1": hists_deltaphi1,
-        "DeltaPhi_MET_Jet2": hists_deltaphi2,
-        "stable_invisible_fraction": hists_if
+        "Jet_mt": fill_hist("MT",25,0,1500,r"$m_{\text{T}}$ [GeV]",Events),
+        "Dijet_pt": fill_hist("Dijet_pt",50,0,1000,r"$p_{\text{T}}$ [GeV]",Events),
+        "Jet1_pt": fill_hist("Jet1_pt",50,0,1000,r"$Jet_1\_p_{\text{T}}$ [GeV]",Events),
+        "Jet2_pt": fill_hist("Jet2_pt",50,0,1000,r"$Jet_2\_p_{\text{T}}$ [GeV]",Events),
+        "MET": fill_hist("MET",50,0,1000,r"$p_{\text{T},miss}$ [GeV]",Events),
+        "Dijet_eta": fill_hist("Dijet_eta",50,-10,10,r"$Jet_{\eta}$ [GeV]",Events),
+        "Jet1_eta": fill_hist("Jet1_eta",50,-6,6,r"$\eta_{Jet1}$",Events),
+        "Jet2_eta": fill_hist("Jet2_eta",50,-6,6,r"$\eta_{Jet2}$",Events),
+        "Dijet_phi": fill_hist("Dijet_phi",25,-4,4,r"$Jet_{\phi}$",Events),
+        "Jet1_phi": fill_hist("Jet1_phi",25,-4,4,r"$\phi_{Jet1}$",Events),
+        "Jet2_phi": fill_hist("Jet2_phi",25,-4,4,r"$\phi_{Jet2}$",Events),
+        "Dijet_mass": fill_hist("Dijet_mass",50,0,2300,r"$Jet_{mass}$ [GeV]",Events),
+        "Jet1_mass": fill_hist("Jet1_mass",50,0,250,r"$Jet1_{mass}$ [GeV]",Events),
+        "Jet2_mass": fill_hist("Jet2_mass",50,0,250,r"$Jet2_{mass}$ [GeV]",Events,
+        "DeltaEta": fill_hist("DeltaEta",35,0,8.0,r"$\Delta\eta$",Events),
+        "DeltaPhi": fill_hist("DeltaPhi",20,0,3.5,r"$\Delta\Phi$",Events),
+        "DeltaPhi_MET_Jet1": fill_hist("DeltaPhi_MET_Jet1",25,0,3.5,r"$\Delta\phi\_P_{t,miss}\_Jet_1$",Events),
+        "DeltaPhi_MET_Jet2": fill_hist("DeltaPhi_MET_Jet2",25,0,3.5,r"$\Delta\phi\_P_{t,miss}\_Jet_2$",Events),
+        "stable_invisible_fraction": fill_hist("stable_invisible_fraction",25,0,1,r"stable_invisible_fraction",Events)
     }
     
     # Saving the histograms

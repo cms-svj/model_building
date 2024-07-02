@@ -44,7 +44,7 @@ def make_plot(hname):                         # hists is a dict containing
         hep.histplot(h[hname],density=True,ax=ax,label=l)
     ax.set_xlim(h.axes[0].edges[0],h.axes[0].edges[-1])
     ax.set_yscale("log")
-    ax.set_ylabel("Arbitury units")
+    ax.set_ylabel("Arbitrary units")
     ax.legend(framealpha=0.5)
     plt.savefig('All_plots/{}.pdf'.format(hname),bbox_inches='tight')
     

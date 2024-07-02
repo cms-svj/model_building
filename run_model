@@ -6,6 +6,7 @@ from contextlib import nullcontext
 from copy import deepcopy
 from magiconfig import ArgumentParser, MagiConfig, MagiConfigOptions, ArgumentDefaultsRawHelpFormatter
 from svjHelper import svjHelper, extHelper
+import Histogram
 
 def separate_args(args,groups):
     separated = {group.title : MagiConfig(**{a.dest:getattr(args,a.dest,None) for a in group._group_actions}) for group in groups}
@@ -100,6 +101,7 @@ if __name__=="__main__":
     # intermediate output filenames
     hepmc_fname = "events.hepmc"
     hepmc_fname_gz = hepmc_fname+".gz"
+    root_fname = "events.root"
 
     if 'pythia' in args["common"].steps:
         # step 1: pythia
@@ -124,7 +126,7 @@ if __name__=="__main__":
         # step 2: delphes
         log_fname = "log_delphes.log"
         delphes_exe = "DelphesHepMC2"
-        root_fname = "events.root"
+        
         if os.path.exists(root_fname):
             if args["common"].verbose: print(f'removing old {root_fname}')
             os.remove(root_fname)
@@ -134,6 +136,6 @@ if __name__=="__main__":
         if args["common"].verbose: print(f'wrote {root_fname}')
         
     if 'hist' in args["common"].steps:
-        root_fname = "events.root"
-        Histogram.histogram(root_fname)
+        
+        Histogram.histogram(root_fname, svjHelper.darkHadronIDs, svjHelper.stableIDs)
         if args["common"].verbose: print(f'wrote histograms of {root_fname}')
