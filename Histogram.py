@@ -58,7 +58,7 @@ def histogram(filename, helper):
     ## For plotting individually for jet1 and jet2
 
     events["Jet1"] = events.FatJet[:,0]
-    events["Jet2"] = events.Fetjet[:,1]
+    events["Jet2"] = events.FatJet[:,1]
 
     # 4-vectors for jet1 and jet2
     events["Jet1_pt"] = events["Jet1"].pt
@@ -80,18 +80,19 @@ def histogram(filename, helper):
     events["DeltaPhi_MET_Jet2"] = np.abs(normalize_angle(events.MissingET.phi - events["Jet2_phi"]))
 
     # Stable inv frac
-    pid = events.Particle["PID"]
-    d1 = events.Particle["D1"]
+    dark_hadron_ids = helper.darkHadronIDs
+    stable_particle_ids = helper.stableIDs
+    pid = events.GenParticle["PID"]
+    d1 = events.GenParticle["D1"]
 
     # Boolean array of whether a particle is dark
+    
     is_dark = ak.zeros_like(pid)
     for dhid in dark_hadron_ids:
         is_dark = is_dark | (np.abs(pid)==dhid)
     is_dark = is_dark==1
 
     # PIDs of dark daughter
-    dark_hadron_ids = helper.darkHadronIDs
-    stable_particle_ids = helper.stableIDs
     dark_daughter = pid[d1[is_dark]] 
     is_dark_daughter = ak.zeros_like(dark_daughter)
 
@@ -99,9 +100,9 @@ def histogram(filename, helper):
         is_dark_daughter = is_dark_daughter | (np.abs(dark_daughter)==dsid)
 
     stability = [None]*len(events)
-    numer = ak.sum(is_dark_daughter, axis=0)
-    denom = ak.sum(is_dark, axis=0)
-    stability = np.divide(numer, denom, out=np.zeros_like(numer), where=denom>0)
+    for i in range(len(pid)): 
+        if ak.sum(is_dark[i])!=0:
+            stability[i] = ak.sum(is_dark_daughter[i])/ak.sum(is_dark[i])
 
     # Add the invisible fraction to the events
     events["stable_invisible_fraction"] = stability
@@ -128,7 +129,7 @@ def histogram(filename, helper):
         "Jet2_phi": fill_hist("Jet2_phi",25,-4,4,r"$\phi_{Jet2}$",Events),
         "Dijet_mass": fill_hist("Dijet_mass",50,0,2300,r"$Jet_{mass}$ [GeV]",Events),
         "Jet1_mass": fill_hist("Jet1_mass",50,0,250,r"$Jet1_{mass}$ [GeV]",Events),
-        "Jet2_mass": fill_hist("Jet2_mass",50,0,250,r"$Jet2_{mass}$ [GeV]",Events,
+        "Jet2_mass": fill_hist("Jet2_mass",50,0,250,r"$Jet2_{mass}$ [GeV]",Events),
         "DeltaEta": fill_hist("DeltaEta",35,0,8.0,r"$\Delta\eta$",Events),
         "DeltaPhi": fill_hist("DeltaPhi",20,0,3.5,r"$\Delta\Phi$",Events),
         "DeltaPhi_MET_Jet1": fill_hist("DeltaPhi_MET_Jet1",25,0,3.5,r"$\Delta\phi\_P_{t,miss}\_Jet_1$",Events),
