@@ -25,7 +25,7 @@ def normalize_angle(angle):
     angle = np.where(angle >= np.pi, angle - 2 * np.pi, angle)
     return angle
 
-def histogram(filename, dark_hadron_ids, stable_particle_ids):                    
+def histogram(filename, helper):                    
     DelphesSchema.mixins["FatJet"] = "Jet"
     Events = NanoEventsFactory.from_root(
                 file=filename,
@@ -90,6 +90,8 @@ def histogram(filename, dark_hadron_ids, stable_particle_ids):
     is_dark = is_dark==1
 
     # PIDs of dark daughter
+    dark_hadron_ids = helper.darkHadronIDs
+    stable_particle_ids = helper.stableIDs
     dark_daughter = pid[d1[is_dark]] 
     is_dark_daughter = ak.zeros_like(dark_daughter)
 

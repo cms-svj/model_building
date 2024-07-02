@@ -137,5 +137,5 @@ if __name__=="__main__":
         
     if 'hist' in args["common"].steps:
         
-        Histogram.histogram(root_fname, svjHelper.darkHadronIDs, svjHelper.stableIDs)
+        Histogram.histogram(root_fname, helper)
         if args["common"].verbose: print(f'wrote histograms of {root_fname}')
