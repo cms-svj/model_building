@@ -191,9 +191,9 @@ class hvSpectrum():
     # helper for common invisible particles
     def dmForRinv(self):
         return [
-            darkHadron(51,0.0,'stable',props=['isResonance = false']),
-            darkHadron(52,0.0,'stable',props=['isResonance = false']),
-            darkHadron(53,0.0,'stable',props=['isResonance = false']),
+            darkHadron(51,0.0,'stable',props=['isResonance = false'],placeholder=True),
+            darkHadron(52,0.0,'stable',props=['isResonance = false'],placeholder=True),
+            darkHadron(53,0.0,'stable',props=['isResonance = false'],placeholder=True),
         ]
 
     def cmsSpectrum(self, helper):
