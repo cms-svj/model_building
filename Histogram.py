@@ -115,24 +115,24 @@ def histogram(filename, helper):
 
     hist_dict = {
         "Jet_mt": fill_hist("MT",25,0,1500,r"$m_{\text{T}}$ [GeV]",Events),
-        "Dijet_pt": fill_hist("Dijet_pt",50,0,1000,r"$p_{\text{T}}$ [GeV]",Events),
-        "Jet1_pt": fill_hist("Jet1_pt",50,0,1000,r"$Jet_1\_p_{\text{T}}$ [GeV]",Events),
-        "Jet2_pt": fill_hist("Jet2_pt",50,0,1000,r"$Jet_2\_p_{\text{T}}$ [GeV]",Events),
-        "MET": fill_hist("MET",50,0,1000,r"$p_{\text{T},miss}$ [GeV]",Events),
-        "Dijet_eta": fill_hist("Dijet_eta",50,-10,10,r"$Jet_{\eta}$ [GeV]",Events),
-        "Jet1_eta": fill_hist("Jet1_eta",50,-6,6,r"$\eta_{Jet1}$",Events),
-        "Jet2_eta": fill_hist("Jet2_eta",50,-6,6,r"$\eta_{Jet2}$",Events),
-        "Dijet_phi": fill_hist("Dijet_phi",25,-4,4,r"$Jet_{\phi}$",Events),
-        "Jet1_phi": fill_hist("Jet1_phi",25,-4,4,r"$\phi_{Jet1}$",Events),
-        "Jet2_phi": fill_hist("Jet2_phi",25,-4,4,r"$\phi_{Jet2}$",Events),
-        "Dijet_mass": fill_hist("Dijet_mass",50,0,2300,r"$Jet_{mass}$ [GeV]",Events),
-        "Jet1_mass": fill_hist("Jet1_mass",50,0,250,r"$Jet1_{mass}$ [GeV]",Events),
-        "Jet2_mass": fill_hist("Jet2_mass",50,0,250,r"$Jet2_{mass}$ [GeV]",Events),
-        "DeltaEta": fill_hist("DeltaEta",35,0,8.0,r"$\Delta\eta$",Events),
-        "DeltaPhi": fill_hist("DeltaPhi",20,0,3.5,r"$\Delta\Phi$",Events),
-        "DeltaPhi_MET_Jet1": fill_hist("DeltaPhi_MET_Jet1",25,0,3.5,r"$\Delta\phi\_P_{t,miss}\_Jet_1$",Events),
-        "DeltaPhi_MET_Jet2": fill_hist("DeltaPhi_MET_Jet2",25,0,3.5,r"$\Delta\phi\_P_{t,miss}\_Jet_2$",Events),
-        "stable_invisible_fraction": fill_hist("stable_invisible_fraction",25,0,1,r"stable_invisible_fraction",Events)
+        "Dijet_pt": fill_hist("Dijet_pt",50,0,1000,r"$p_{\text{T}}(JJ)$ [GeV]",Events),
+        "Jet1_pt": fill_hist("Jet1_pt",50,0,1000,r"$p_{\text{T}}(J_1)$ [GeV]",Events),
+        "Jet2_pt": fill_hist("Jet2_pt",50,0,1000,r"$p_{\text{T}}(J_2)$ [GeV]",Events),
+        "MET": fill_hist("MET",50,0,1000,r"$p_{\text{T}}^{\text{miss}}$ [GeV]",Events),
+        "Dijet_eta": fill_hist("Dijet_eta",50,-10,10,r"$\eta_{JJ}$ [GeV]",Events),
+        "Jet1_eta": fill_hist("Jet1_eta",50,-6,6,r"$\eta_{J_1}$",Events),
+        "Jet2_eta": fill_hist("Jet2_eta",50,-6,6,r"$\eta_{J_2}$",Events),
+        "Dijet_phi": fill_hist("Dijet_phi",25,-4,4,r"$\phi_{JJ}$",Events),
+        "Jet1_phi": fill_hist("Jet1_phi",25,-4,4,r"$\phi_{J_1}$",Events),
+        "Jet2_phi": fill_hist("Jet2_phi",25,-4,4,r"$\phi_{J_2}$",Events),
+        "Dijet_mass": fill_hist("Dijet_mass",50,0,2300,r"$m_{JJ}$ [GeV]",Events),
+        "Jet1_mass": fill_hist("Jet1_mass",50,0,250,r"$m_{J_1}$ [GeV]",Events),
+        "Jet2_mass": fill_hist("Jet2_mass",50,0,250,r"$m_{J_2}$ [GeV]",Events),
+        "DeltaEta": fill_hist("DeltaEta",35,0,8.0,r"$\Delta\eta(JJ)$",Events),
+        "DeltaPhi": fill_hist("DeltaPhi",20,0,3.5,r"$\Delta\phi(JJ)$",Events),
+        "DeltaPhi_MET_Jet1": fill_hist("DeltaPhi_MET_Jet1",25,0,3.5,r"$\Delta\phi(J_1,p_{\text{T}}^{\text{miss}})$",Events),
+        "DeltaPhi_MET_Jet2": fill_hist("DeltaPhi_MET_Jet2",25,0,3.5,r"$\Delta\phi(J_2,p_{\text{T}}^{\text{miss}})$",Events),
+        "stable_invisible_fraction": fill_hist("stable_invisible_fraction",25,0,1,r"$\overline{r}_{\text{inv}}$",Events)
     }
 
     # Saving the histograms
