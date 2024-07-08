@@ -1,2 +1,6 @@
 ./install/pythia8/
 ./install/python_packages/
+*.png
+*.pkl
+*.pdf
+./models

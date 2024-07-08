@@ -6,6 +6,7 @@ from contextlib import nullcontext
 from copy import deepcopy
 from magiconfig import ArgumentParser, MagiConfig, MagiConfigOptions, ArgumentDefaultsRawHelpFormatter
 from svjHelper import svjHelper, extHelper
+import Histogram
 
 def separate_args(args,groups):
     separated = {group.title : MagiConfig(**{a.dest:getattr(args,a.dest,None) for a in group._group_actions}) for group in groups}
@@ -22,7 +23,7 @@ def run_cmd(cmd,log,verbose=False,shell=False):
 if __name__=="__main__":
     _parser_common = ArgumentParser(add_help=False)
 
-    allowed_steps = ['pythia','delphes']
+    allowed_steps = ['pythia','delphes','hist']
 
     common = _parser_common.add_argument_group("common")
     common.add_argument("--steps", type=str, nargs='*', default=[], choices=allowed_steps+['all'], help="run these steps")
@@ -100,6 +101,7 @@ if __name__=="__main__":
     # intermediate output filenames
     hepmc_fname = "events.hepmc"
     hepmc_fname_gz = hepmc_fname+".gz"
+    root_fname = "events.root"
 
     if 'pythia' in args["common"].steps:
         # step 1: pythia
@@ -124,7 +126,7 @@ if __name__=="__main__":
         # step 2: delphes
         log_fname = "log_delphes.log"
         delphes_exe = "DelphesHepMC2"
-        root_fname = "events.root"
+        
         if os.path.exists(root_fname):
             if args["common"].verbose: print(f'removing old {root_fname}')
             os.remove(root_fname)
@@ -132,3 +134,8 @@ if __name__=="__main__":
         if not args["common"].quiet: print(f'Running Delphes ({log_fname})')
         run_cmd(delphes_cmd, log_fname, args["common"].verbose, shell=True)
         if args["common"].verbose: print(f'wrote {root_fname}')
+        
+    if 'hist' in args["common"].steps:
+        
+        Histogram.histogram(root_fname, helper)
+        if args["common"].verbose: print(f'wrote histograms of {root_fname}')
