@@ -44,8 +44,8 @@ This command will, in order:
 4. run Delphes
 5. make histograms
 
-If the `--steps` command is omitted, items 3, 4 and 5 will be skipped.
-Items 3, 4 and 5 can be run separately by specifying just one of them in `--steps`.
+If the `--steps` command is omitted, items 3, 4, and 5 will be skipped.
+Items 3, 4, and 5 can be run separately by specifying just one of them in `--steps`.
 
 The input model configuration can be modified using command-line arguments, and the resulting configuration file will be generated along with the Pythia and Delphes cards.
 

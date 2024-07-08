@@ -25,14 +25,14 @@ def normalize_angle(angle):
     angle = np.where(angle >= np.pi, angle - 2 * np.pi, angle)
     return angle
 
-def histogram(filename, helper):                    
+def histogram(filename, helper):
     DelphesSchema.mixins["FatJet"] = "Jet"
     Events = NanoEventsFactory.from_root(
-                file=filename,
-                    treepath="Delphes",
-                        schemaclass=DelphesSchema,
-                        ).events()
-    
+        file=filename,
+        treepath="Delphes",
+        schemaclass=DelphesSchema,
+    ).events()
+
     # require two jets
     events = Events
     mask = ak.num(events.FatJet)>=2
@@ -46,7 +46,7 @@ def histogram(filename, helper):
     E2 = events.MissingET.MET
     MTsq = (E1+E2)**2-(events.Dijet.px+events.MissingET.px)**2-(events.Dijet.py+events.MissingET.py)**2
     events["MT"] = np.sqrt(MTsq, where=MTsq>=0)
-            
+
     # 4-vectors for dijet
     events["Dijet_pt"] = events.Dijet.pt
     events["Dijet_eta"] = events.Dijet.eta
@@ -63,19 +63,19 @@ def histogram(filename, helper):
     # 4-vectors for jet1 and jet2
     events["Jet1_pt"] = events["Jet1"].pt
     events["Jet2_pt"] = events["Jet2"].pt
-    
+
     events["Jet1_eta"] = events["Jet1"].eta
     events["Jet2_eta"] = events["Jet2"].eta
-    
+
     events["Jet1_phi"] = events["Jet1"].phi
     events["Jet2_phi"] = events["Jet2"].phi
-    
+
     events["Jet1_mass"] = events["Jet1"].mass
     events["Jet2_mass"] = events["Jet2"].mass
-    
+
     events["DeltaEta"] = np.abs(events["Jet2_eta"] - events["Jet1_eta"])
     events["DeltaPhi"] = np.abs(normalize_angle(events["Jet1_phi"] - events["Jet2_phi"]))
-    
+
     events["DeltaPhi_MET_Jet1"] = np.abs(normalize_angle(events.MissingET.phi - events["Jet1_phi"]))
     events["DeltaPhi_MET_Jet2"] = np.abs(normalize_angle(events.MissingET.phi - events["Jet2_phi"]))
 
@@ -86,21 +86,20 @@ def histogram(filename, helper):
     d1 = events.GenParticle["D1"]
 
     # Boolean array of whether a particle is dark
-    
     is_dark = ak.zeros_like(pid)
     for dhid in dark_hadron_ids:
         is_dark = is_dark | (np.abs(pid)==dhid)
     is_dark = is_dark==1
 
     # PIDs of dark daughter
-    dark_daughter = pid[d1[is_dark]] 
+    dark_daughter = pid[d1[is_dark]]
     is_dark_daughter = ak.zeros_like(dark_daughter)
 
     for dsid in stable_particle_ids:
         is_dark_daughter = is_dark_daughter | (np.abs(dark_daughter)==dsid)
 
     stability = [None]*len(events)
-    for i in range(len(pid)): 
+    for i in range(len(pid)):
         if ak.sum(is_dark[i])!=0:
             stability[i] = ak.sum(is_dark_daughter[i])/ak.sum(is_dark[i])
 
@@ -109,8 +108,7 @@ def histogram(filename, helper):
 
     # store modified events array
     Events = events
-    
-    
+
     # Histogram
 
     # Creating hist objects
@@ -136,8 +134,7 @@ def histogram(filename, helper):
         "DeltaPhi_MET_Jet2": fill_hist("DeltaPhi_MET_Jet2",25,0,3.5,r"$\Delta\phi\_P_{t,miss}\_Jet_2$",Events),
         "stable_invisible_fraction": fill_hist("stable_invisible_fraction",25,0,1,r"stable_invisible_fraction",Events)
     }
-    
+
     # Saving the histograms
-    with open("Hists.pkl", "wb") as out:        
+    with open("Hists.pkl", "wb") as out:
         pickle.dump(hist_dict, out)
-    
