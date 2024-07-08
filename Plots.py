@@ -20,7 +20,7 @@ mpl.rcParams.update({
     "legend.frameon": True,
 })
 # based on https://github.com/mpetroff/accessible-color-cycles
-# red, blue, mauve, orange, purple, gray, 
+# red, blue, mauve, orange, purple, gray,
 colors = ["#e42536", "#5790fc", "#964a8b", "#f89c20", "#7a21dd", "#9c9ca1"]
 mpl.rcParams['axes.prop_cycle'] = mpl.cycler(color=colors)
 
@@ -31,14 +31,14 @@ hists = {}      # Contains the lists of histos for all models
 for sample in samples:
     path = f'models/{sample["model"]}'
     file=f'{path}/Hists.pkl'
-                   
+
     with open(file, "rb") as inp:
-        hists_model=pickle.load(inp)                # Dict Contains all the histos for 1 model        
-                
+        hists_model=pickle.load(inp)                # Dict Contains all the histos for 1 model
+
     hists[sample["name"]] = hists_model
 
 # helper to make a plot
-def make_plot(hname):                         # hists is a dict containing 
+def make_plot(hname):                         # hists is a dict containing
     fig, ax = plt.subplots(figsize=(8,6))
     for l,h in hists.items():                       # h is a list of hist objects
         hep.histplot(h[hname],density=True,ax=ax,label=l)
