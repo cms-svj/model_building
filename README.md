@@ -49,6 +49,8 @@ Items 3, 4, and 5 can be run separately by specifying just one of them in `--ste
 
 The input model configuration can be modified using command-line arguments, and the resulting configuration file will be generated along with the Pythia and Delphes cards.
 
+Once histograms are created, an example of how to plot them, comparing different models, can be found in [Plots.py](./Plots.py).
+
 ### Alternative method
 
 An external Pythia card can be used (instead of generating a model by providing the helper with a parameter configuration):
