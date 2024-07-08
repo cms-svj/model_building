@@ -1,3 +1,4 @@
+import os
 import hist
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -46,8 +47,13 @@ def make_plot(hname):                         # hists is a dict containing
     ax.set_yscale("log")
     ax.set_ylabel("Arbitrary units")
     ax.legend(framealpha=0.5)
-    plt.savefig('All_plots/{}.pdf'.format(hname),bbox_inches='tight')
-    
+    outdir = "All_plots"
+    os.makedirs(outdir,exist_ok=True)
+    plt.savefig('{}/{}.pdf'.format(outdir,hname),bbox_inches='tight')
+
 def make_all_plots():
     for hname in hists['CMS']:
         make_plot(hname)
+
+if __name__=="__main__":
+    make_all_plots()
