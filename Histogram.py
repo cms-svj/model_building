@@ -99,10 +99,9 @@ def histogram(filename, helper):
     for dsid in stable_particle_ids:
         is_dark_daughter = is_dark_daughter | (np.abs(dark_daughter)==dsid)
 
-    stability = [None]*len(events)
-    for i in range(len(pid)):
-        if ak.sum(is_dark[i])!=0:
-            stability[i] = ak.sum(is_dark_daughter[i])/ak.sum(is_dark[i])
+    numer = ak.sum(is_dark_daughter, axis=1).to_numpy().astype(float)
+    denom = ak.sum(is_dark, axis=1).to_numpy().astype(float)
+    stability = np.divide(numer, denom, out=np.zeros_like(numer), where=denom>0)
 
     # Add the invisible fraction to the events
     events["stable_invisible_fraction"] = stability
