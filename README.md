@@ -63,9 +63,10 @@ As shown, the lists of stable particle IDs and dark hadron IDs must be provided 
 
 ## Analysis
 
-The notebook [example_MT.ipynb](./example_MT.ipynb) shows an example of analyzing the generated events using [coffea](https://github.com/CoffeaTeam/coffea/):
+The notebook [example_MT.ipynb](./example_MT.ipynb) shows an example of interactively analyzing the generated events using [coffea](https://github.com/CoffeaTeam/coffea/):
 * applying selections
 * computing new quantities
 * filling histograms
 * making plots
 
+For programmatic analysis, follow [Histogram.py](./Histogram.py) and [Plots.py](./Plots.py) as noted above.
