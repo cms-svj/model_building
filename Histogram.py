@@ -3,7 +3,8 @@ import pickle
 import numpy as np
 import hist
 import matplotlib as mpl
-from coffea.nanoevents import NanoEventsFactory, DelphesSchema
+from coffea.nanoevents import NanoEventsFactory
+from common import DelphesSchema
 
 def ET(vec):
     return np.sqrt(vec.px**2+vec.py**2+vec.mass**2)
