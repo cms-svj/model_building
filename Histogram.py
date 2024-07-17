@@ -4,7 +4,7 @@ import numpy as np
 import hist
 import matplotlib as mpl
 from coffea.nanoevents import NanoEventsFactory
-from common import DelphesSchema
+from common import DelphesSchema, load_events
 
 def ET(vec):
     return np.sqrt(vec.px**2+vec.py**2+vec.mass**2)
@@ -28,11 +28,7 @@ def normalize_angle(angle):
 
 def histogram(filename, helper):
     DelphesSchema.mixins["FatJet"] = "Jet"
-    Events = NanoEventsFactory.from_root(
-        file=filename,
-        treepath="Delphes",
-        schemaclass=DelphesSchema,
-    ).events()
+    Events = load_events(filename)
 
     # require two jets
     events = Events
