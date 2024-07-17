@@ -18,7 +18,7 @@ def fill_hist(var,nbins,bmin,bmax,label,Events):
         .Reg(nbins, bmin, bmax, label=label)
         .Double()
     )
-    h.fill(get_values(var,Events),weight=0.5)
+    h.fill(get_values(var,Events))
     return h
 
 def normalize_angle(angle):
