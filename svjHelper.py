@@ -21,6 +21,14 @@ def mqconst_snowmass(*, mpi, scale):
 def mrho_snowmass(*, mpi, scale):
     return scale*math.sqrt(5.76+1.5*mpi**2/scale**2)
 
+# combining these into snowmass mass scheme
+def masses_snowmass(*, config, scale, mpi_over_scale):
+    config.scale = scale
+    config.mpi = mpi_over_scale * scale
+    config.mq = mqconst_snowmass(mpi=config.mpi, scale=config.scale)
+    config.mrho = mrho_snowmass(mpi=config.mpi, scale=config.scale)
+    return config
+
 # classes for helper
 
 class quark(object):
