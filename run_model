@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 
-import os, fileinput, subprocess, shlex, shutil, gzip
+import os, sys, fileinput, subprocess, shlex, shutil, gzip
 from pathlib import Path
 from contextlib import nullcontext
 from copy import deepcopy
 from magiconfig import ArgumentParser, MagiConfig, MagiConfigOptions, ArgumentDefaultsRawHelpFormatter
 from svjHelper import svjHelper, extHelper
 import Histogram
+
+sys.path.append(os.getcwd()+"/configs")
 
 def separate_args(args,groups):
     separated = {group.title : MagiConfig(**{a.dest:getattr(args,a.dest,None) for a in group._group_actions}) for group in groups}
