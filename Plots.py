@@ -42,7 +42,7 @@ for sample in samples:
 def make_plot(hname):                         # hists is a dict containing
     fig, ax = plt.subplots(figsize=(8,6))
     for l,h in hists.items():                       # h is a list of hist objects
-        hep.histplot(h[hname],density=True,ax=ax,label=l,flow="none")
+        hep.histplot(h[hname],density=True,ax=ax,label=l,flow="none",yerr=0)
     ax.set_xlim(h[hname].axes[0].edges[0],h[hname].axes[0].edges[-1])
     ax.set_yscale("log")
     ax.set_ylabel("Arbitrary units")
