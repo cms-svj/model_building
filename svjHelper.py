@@ -79,12 +79,14 @@ class massRunner(object):
 class quarklist(object):
     def __init__(self):
         # mass-ordered
+        # using Pythia masses
+        # would be nice to get these directly from Pythia to ensure consistency
         self.qlist = [
-            quark(2,0.0023), # up
-            quark(1,0.0048), # down
-            quark(3,0.095),  # strange
-            quark(4,1.275),  # charm
-            quark(5,4.18),   # bottom
+            quark(1,0.33), # down
+            quark(2,0.33), # up
+            quark(3,0.5),  # strange
+            quark(4,1.5),  # charm
+            quark(5,4.8),  # bottom
         ]
         self.scale = None
         self.runner = massRunner()
