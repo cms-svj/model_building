@@ -82,7 +82,6 @@ def histogram(filename, helper):
     dark_hadron_ids = [4900211,4900111]
     pid = events.GenParticle["PID"]
     d1 = events.GenParticle["D1"]
-    m1 = events.GenParticle["M1"]
 
     # Boolean array of whether a particle is dark
     is_dark = ak.zeros_like(pid)
