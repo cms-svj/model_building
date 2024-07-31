@@ -77,8 +77,9 @@ def histogram(filename, helper):
     events["DeltaPhi_MET_Jet2"] = np.abs(normalize_angle(events.MissingET.phi - events["Jet2_phi"]))
 
     # Stable inv frac
-    dark_hadron_ids = helper.darkHadronIDs
+    #dark_hadron_ids = helper.darkHadronIDs
     stable_particle_ids = helper.stableIDs
+    dark_hadron_ids = [4900211,4900111]
     pid = events.GenParticle["PID"]
     d1 = events.GenParticle["D1"]
 
@@ -90,10 +91,10 @@ def histogram(filename, helper):
 
     # PIDs of dark daughter
     dark_daughter = pid[d1[is_dark]]
-    is_dark_daughter = ak.zeros_like(dark_daughter)
+    is_dark_daughter = ak.zeros_like(dark_daughter) | (d1[is_dark]==-1)
 
     for dsid in stable_particle_ids:
-        is_dark_daughter = is_dark_daughter | (np.abs(dark_daughter)==dsid)
+        is_dark_daughter = is_dark_daughter | (np.abs(dark_daughter)==dsid) 
 
     numer = ak.sum(is_dark_daughter, axis=1).to_numpy().astype(float)
     denom = ak.sum(is_dark, axis=1).to_numpy().astype(float)
