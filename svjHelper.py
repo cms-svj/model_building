@@ -310,6 +310,7 @@ class svjHelper(baseHelper):
         # set up spectrum
         self.spectrumParticles = hvSpectrum().populate(self.spectrum, self)
         self.darkHadronIDs = [dh.id for dh in self.spectrumParticles if not dh.placeholder]
+        self.darkHadronFinalIDs = [dh.id for dh in self.spectrumParticles if not dh.placeholder and dh.decay!='darkPion']
         self.stableIDs = [dh.id for dh in self.spectrumParticles if dh.decay=='stable']
 
         # metadata tracking
@@ -334,6 +335,7 @@ class svjHelper(baseHelper):
         metadict = {param:getattr(self,param) for param in self.always_included}
         metadict["stableIDs"] = self.stableIDs
         metadict["darkHadronIDs"] = self.darkHadronIDs
+        metadict["darkHadronFinalIDs"] = self.darkHadronFinalIDs
         if self.rinv is not None:
             metadict["rinv"] = self.rinv
         return metadict
@@ -397,6 +399,7 @@ class extHelper(baseHelper):
         parser.add_argument("--card", type=str, required=True, help="external Pythia card")
         parser.add_argument("--stableIDs", type=int, nargs='*', default=[], help="list of stable PDG IDs")
         parser.add_argument("--darkHadronIDs", type=int, nargs='*', default=[], help="list of dark hadron PDG IDs")
+        parser.add_argument("--darkHadronFinalIDs", type=int, nargs='*', default=[], help="list of final dark hadron PDG IDs")
 
     def __init__(self,args):
         super().__init__(args)
@@ -409,6 +412,7 @@ class extHelper(baseHelper):
         metadict = {}
         metadict["stableIDs"] = self.stableIDs
         metadict["darkHadronIDs"] = self.darkHadronIDs
+        metadict["darkHadronFinalIDs"] = self.darkHadronFinalIDs
         return metadict
 
     def getPythiaSettings(self):
