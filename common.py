@@ -4,65 +4,32 @@ import numba as nb
 from numpy.typing import NDArray
 import awkward as ak
 from coffea.nanoevents.methods import vector
-from coffea.nanoevents.methods.delphes import behavior, _set_repr_name
+from coffea.nanoevents.methods.delphes import behavior, _set_repr_name, Particle
 
 DelphesSchema.mixins.update({
-    "GenParticle": "Particle",
-    "GenCandidate": "Particle",
     "ParticleFlowCandidate": "Particle",
-    "DarkHadronCandidate": "Particle",
     "FatJet": "Jet",
     "GenFatJet": "Jet",
     "DarkHadronJet": "Jet",
 })
 
 # workaround for https://cp3.irmp.ucl.ac.be/projects/delphes/ticket/1170
-# avoid using mass branch because its units may be wrong
+# manually fix mass units
 
 @ak.mixin_class(behavior)
-class Particle2(vector.PtEtaPhiELorentzVector):
-    """Generic particle collection that has Lorentz vector properties
-
-    The following branches are not used:
-
-     - Px: particle momentum vector (x component)
-     - Py: particle momentum vector (y component)
-     - Pz: particle momentum vector (z component)
-
-     - Mass: particle mass
-     - P: particle momentum
-     - Rapidity: particle rapidity
-
-     - T: particle vertex position (t component)
-     - X: particle vertex position (x component)
-     - Y: particle vertex position (y component)
-     - Z: particle vertex position (z component)
-    """
-
+class GenParticle(Particle):
     @property
-    def pt(self):
-        return self["PT"]
+    def mass(self):
+        return self["Mass"]*0.001
 
-    @property
-    def eta(self):
-        return self["Eta"]
+_set_repr_name("GenParticle")
 
-    @property
-    def phi(self):
-        return self["Phi"]
-
-    @property
-    def energy(self):
-        return self["E"]
-
-    @property
-    def t(self):
-        return self["E"]
-
-_set_repr_name("Particle2")
-
-# propagate usage to schema
-DelphesSchema.mixins.update({k : "Particle2" for k,v in DelphesSchema.mixins.items() if v=="Particle"})
+# propagate usage to schema, only for generator particles
+DelphesSchema.mixins.update({
+    "GenParticle": "GenParticle",
+    "GenCandidate": "GenParticle",
+    "DarkHadronCandidate": "GenParticle",
+})
 
 class DelphesSchema2(DelphesSchema):
     jet_const_pairs = {
@@ -104,7 +71,7 @@ def get_constituents(events, jetsname, candsname):
             unflattened = ak.unflatten(cands[indices],ak.count(jets.Constituents.refs,axis=1),behavior=cands.behavior)[None]
         output.append(unflattened)
     # very important for performance to call ak.concatenate only once at the end
-    return ak.with_name(ak.concatenate(output), "Particle2")
+    return ak.with_name(ak.concatenate(output), DelphesSchema2.mixins[candsname])
 
 def init_constituents(events):
     for jet,const in DelphesSchema2.jet_const_pairs.items():
