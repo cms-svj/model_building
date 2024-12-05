@@ -19,7 +19,7 @@ class DelphesSchema2(DelphesSchema):
         "GenJet" : "GenCandidate",
     }
 
-    # avoid weird error when adding substructure
+    # avoid weird error when adding constituents
     def __init__(self, base_form):
         for key in list(base_form["contents"].keys()):
             if "fBits" in key:
@@ -57,7 +57,7 @@ def get_constituents(events, jetsname, candsname):
     # very important for performance to call ak.concatenate only once at the end
     return ak.with_name(ak.concatenate(output), "Particle")
 
-def init_substructure(events):
+def init_constituents(events):
     for jet,const in DelphesSchema2.jet_const_pairs.items():
         events[jet,"ConstituentsOrig"] = events[jet,"Constituents"]
         events[jet,"Constituents"] = get_constituents(events,jet,const)
@@ -73,12 +73,12 @@ def sum_4vec(vec):
     }
     return ak.zip(summed_vec,with_name="LorentzVector")
 
-def test_substructure(events):
+def test_constituents(events):
     for jet in DelphesSchema2.jet_const_pairs:
         check_jets = sum_4vec(events[jet,"Constituents"])
         print(jet, check_jets.mass-events[jet].mass)
 
-def load_sample(sample,helper=None,schema=DelphesSchema,with_substructure=False):
+def load_sample(sample,helper=None,schema=DelphesSchema,with_constituents=False):
     from coffea.nanoevents import NanoEventsFactory
     path = f'models/{sample["model"]}'
     if helper is None:
@@ -88,11 +88,11 @@ def load_sample(sample,helper=None,schema=DelphesSchema,with_substructure=False)
         sample["helper"] = helper
     metadict = sample["helper"].metadata()
     metadict["dataset"] = sample["name"]
-    sample["events"] = load_events(f'{path}/events.root',schema=schema,metadict=metadict,with_substructure=with_substructure)
+    sample["events"] = load_events(f'{path}/events.root',schema=schema,metadict=metadict,with_constituents=with_constituents)
 
-def load_events(filename,schema=DelphesSchema,metadict=None,with_substructure=False):
+def load_events(filename,schema=DelphesSchema,metadict=None,with_constituents=False):
     from coffea.nanoevents import NanoEventsFactory
-    if with_substructure and schema==DelphesSchema:
+    if with_constituents and schema==DelphesSchema:
         schema = DelphesSchema2
     events = NanoEventsFactory.from_root(
         file=filename,
@@ -100,7 +100,7 @@ def load_events(filename,schema=DelphesSchema,metadict=None,with_substructure=Fa
         schemaclass=schema,
         metadata=metadict,
     ).events()
-    if with_substructure:
-        events = init_substructure(events)
+    if with_constituents:
+        events = init_constituents(events)
     return events
 
