@@ -13,6 +13,10 @@ DelphesSchema.mixins.update({
 class DelphesSchema2(DelphesSchema):
     jet_const_pairs = {
         "FatJet" : "ParticleFlowCandidate",
+        "Jet" : "ParticleFlowCandidate",
+        "DarkHadronJet" : "DarkHadronCandidate",
+        "GenFatJet" : "GenCandidate",
+        "GenJet" : "GenCandidate",
     }
 
     # avoid weird error when adding substructure
