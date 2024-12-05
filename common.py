@@ -1,4 +1,10 @@
 from coffea.nanoevents import DelphesSchema
+import numpy as np
+import numba as nb
+from numpy.typing import NDArray
+import awkward as ak
+from coffea.nanoevents.methods import vector
+from coffea.nanoevents.methods.delphes import behavior, _set_repr_name
 
 DelphesSchema.mixins.update({
     "GenParticle": "Particle",
@@ -9,6 +15,54 @@ DelphesSchema.mixins.update({
     "GenFatJet": "Jet",
     "DarkHadronJet": "Jet",
 })
+
+# workaround for https://cp3.irmp.ucl.ac.be/projects/delphes/ticket/1170
+# avoid using mass branch because its units may be wrong
+
+@ak.mixin_class(behavior)
+class Particle2(vector.PtEtaPhiELorentzVector):
+    """Generic particle collection that has Lorentz vector properties
+
+    The following branches are not used:
+
+     - Px: particle momentum vector (x component)
+     - Py: particle momentum vector (y component)
+     - Pz: particle momentum vector (z component)
+
+     - Mass: particle mass
+     - P: particle momentum
+     - Rapidity: particle rapidity
+
+     - T: particle vertex position (t component)
+     - X: particle vertex position (x component)
+     - Y: particle vertex position (y component)
+     - Z: particle vertex position (z component)
+    """
+
+    @property
+    def pt(self):
+        return self["PT"]
+
+    @property
+    def eta(self):
+        return self["Eta"]
+
+    @property
+    def phi(self):
+        return self["Phi"]
+
+    @property
+    def energy(self):
+        return self["E"]
+
+    @property
+    def t(self):
+        return self["E"]
+
+_set_repr_name("Particle2")
+
+# propagate usage to schema
+DelphesSchema.mixins.update({k : "Particle2" for k,v in DelphesSchema.mixins.items() if v=="Particle"})
 
 class DelphesSchema2(DelphesSchema):
     jet_const_pairs = {
@@ -25,11 +79,6 @@ class DelphesSchema2(DelphesSchema):
             if "fBits" in key:
                 base_form["contents"].pop(key, None)
         super().__init__(base_form)
-
-import numpy as np
-import numba as nb
-from numpy.typing import NDArray
-import awkward as ak
 
 # ignore unnecessary warning
 from numba.core.errors import NumbaTypeSafetyWarning
@@ -55,7 +104,7 @@ def get_constituents(events, jetsname, candsname):
             unflattened = ak.unflatten(cands[indices],ak.count(jets.Constituents.refs,axis=1),behavior=cands.behavior)[None]
         output.append(unflattened)
     # very important for performance to call ak.concatenate only once at the end
-    return ak.with_name(ak.concatenate(output), "Particle")
+    return ak.with_name(ak.concatenate(output), "Particle2")
 
 def init_constituents(events):
     for jet,const in DelphesSchema2.jet_const_pairs.items():
@@ -66,7 +115,7 @@ def init_constituents(events):
 # helper to test that all jet constituents were found
 def sum_4vec(vec):
     summed_vec = {
-        "t": ak.sum(vec.E,axis=-1),
+        "t": ak.sum(vec.energy,axis=-1),
         "x": ak.sum(vec.px,axis=-1),
         "y": ak.sum(vec.py,axis=-1),
         "z": ak.sum(vec.pz,axis=-1),
