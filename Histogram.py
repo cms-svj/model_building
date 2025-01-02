@@ -26,6 +26,76 @@ def normalize_angle(angle):
     angle = np.where(angle >= np.pi, angle - 2 * np.pi, angle)
     return angle
 
+def deltaR(jet):
+    deta_particle = np.abs(jet.eta-jet.Constituents.eta)
+    dphi_particle = np.abs(normalize_angle(jet.phi-jet.Constituents.phi))
+    dR = np.sqrt(deta_particle**2+dphi_particle)
+    return dR
+
+def calculate_girth(jet):
+    girth = []
+    particle_dR = deltaR(jet)
+    girth_val =  ak.sum(jet.Constituents.pt * particle_dR, axis=-1)
+                                                                                                                                                                      
+    girth.append(girth_val)
+
+    np.divide(girth,jet.pt) #normalize wrt jet pt
+    return girth
+
+def calculate_ptD(jet):
+    sum_pt = ak.sum(jet.Constituents.pt,axis=-1)
+    sum_pt2 = ak.sum(jet.Constituents.pt ** 2,axis=-1)
+    ptD = np.sqrt(sum_pt2) / sum_pt
+
+    # Return the result (ptD)                                                                                                                                        \
+                                                                                                                                                                      
+    return ptD
+
+def calc_axis1_axis2(jet):
+    jet_constpt = jet.Constituents.pt
+    deta_particle = np.abs(jet.eta-jet.Constituents.eta)
+    dphi_particle = np.abs(normalize_angle(jet.phi-jet.Constituents.phi))
+
+    # Calculate weights (pt^2) for each constituent                                                                                                                                                                  \
+                                                                                                                                                                                                                      
+    weights_pt = jet_constpt**2
+
+    # Calculate weighted sums for each event                                                                                                                                                                         \
+                                                                                                                                                                                                                      
+    sum_weight = ak.sum(weights_pt, axis=1)  # Sum of weights (pt^2) for each event                                                                                                                                  \
+                                                                                                                                                                                                                      
+    sum_deta = ak.sum(deta_particle * weights_pt, axis=1)
+    sum_dphi = ak.sum(dphi_particle * weights_pt, axis=1)
+    sum_deta2 = ak.sum(deta_particle**2 * weights_pt, axis=1)
+    sum_dphi2 = ak.sum(dphi_particle**2 * weights_pt, axis=1)
+    sum_detadphi = ak.sum(deta_particle * dphi_particle * weights_pt, axis=1)
+
+    # Calculate averages                                                                                                                                                                                             \
+                                                                                                                                                                                                                      
+    ave_deta = sum_deta / sum_weight
+    ave_dphi = sum_dphi / sum_weight
+    ave_deta2 = sum_deta2 / sum_weight
+    ave_dphi2 = sum_dphi2 / sum_weight
+
+    # Calculate covariance matrix components                                                                                                                                                                         \
+                                                                                                                                                                                                                      
+    a = ave_deta2 - ave_deta**2
+    b = ave_dphi2 - ave_dphi**2
+    c = -(sum_detadphi / sum_weight - ave_deta * ave_dphi)
+
+
+    # Calculate the discriminant (delta) for each event                                                                                                                                                              \
+                                                                                                                                                                                                                      
+    delta = np.sqrt(np.abs((a - b)**2 + 4 * c**2))
+
+    # Calculate axis1 (major) and axis2 (minor) for each event                                                                                                                                                       \
+                                                                                                                                                                                                                      
+    axis1 = np.sqrt(0.5 * (a + b + delta))
+    axis2 = np.sqrt(0.5 * (a + b - delta))
+
+    return axis1, axis2
+
+
 def histogram(filename, helper):
     Events = load_events(filename, with_constituents=True)
 
@@ -33,6 +103,10 @@ def histogram(filename, helper):
     events = Events
     mask = ak.num(events.FatJet)>=2
     events = events[mask]
+
+    #get rid of None Events                                                                                                                                                                                           
+    mask2 = ~ak.is_none(events.Event.Number)
+    events = events[mask2]
 
     # Dijet
     events["Dijet"] = events.FatJet[:,0]+events.FatJet[:,1]
@@ -129,6 +203,14 @@ def histogram(filename, helper):
         "DeltaPhi": fill_hist("DeltaPhi",20,0,3.5,r"$\Delta\phi(JJ)$",Events),
         "DeltaPhi_MET_Jet1": fill_hist("DeltaPhi_MET_Jet1",25,0,3.5,r"$\Delta\phi(J_1,p_{\text{T}}^{\text{miss}})$",Events),
         "DeltaPhi_MET_Jet2": fill_hist("DeltaPhi_MET_Jet2",25,0,3.5,r"$\Delta\phi(J_2,p_{\text{T}}^{\text{miss}})$",Events),
+        "Jet1_girth": fill_hist("Jet1_girth",50,0,1,r"DeltaR",Events),
+        "Jet2_girth": fill_hist("Jet2_girth",50,0,1,r"DeltaR",Events),
+        "Jet1_ptD": fill_hist("Jet1_ptD",50,0,1.01,r"$p_{\text{tD}}(J_1)$ [GeV]",Events),
+        "Jet2_ptD": fill_hist("Jet2_ptD",50,0,1.01,r"$p_{\text{tD}}(J_2)$ [GeV]",Events),
+        "Jet1_major": fill_hist("Jet1_majoraxis",50,0,1,r"Major Axis",Events),
+        "Jet1_minor": fill_hist("Jet1_minoraxis",50,0,1,r"Minor Axis",Events),
+	"Jet2_major": fill_hist("Jet2_majoraxis",50,0,1,r"Major Axis",Events),
+	"Jet2_minor": fill_hist("Jet2_minoraxis",50,0,1,r"Minor Axis",Events),
         "stable_invisible_fraction": fill_hist("stable_invisible_fraction",25,0,1,r"$\overline{r}_{\text{inv}}$",Events)
     }
 
