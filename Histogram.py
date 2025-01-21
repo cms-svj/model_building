@@ -29,17 +29,13 @@ def normalize_angle(angle):
 def deltaR(jet):
     deta_particle = np.abs(jet.eta-jet.Constituents.eta)
     dphi_particle = np.abs(normalize_angle(jet.phi-jet.Constituents.phi))
-    dR = np.sqrt(deta_particle**2+dphi_particle)
+    dR = np.sqrt(deta_particle**2+dphi_particle**2)
     return dR
 
 def calculate_girth(jet):
-    girth = []
     particle_dR = deltaR(jet)
-    girth_val =  ak.sum(jet.Constituents.pt * particle_dR, axis=-1)
-                                                                                                                                                                      
-    girth.append(girth_val)
-
-    np.divide(girth,jet.pt) #normalize wrt jet pt
+    girth = ak.sum(jet.Constituents.pt * particle_dR, axis=-1)
+    girth = np.divide(girth,jet.pt) #normalize wrt jet pt
     return girth
 
 def calculate_ptD(jet):
@@ -47,8 +43,7 @@ def calculate_ptD(jet):
     sum_pt2 = ak.sum(jet.Constituents.pt ** 2,axis=-1)
     ptD = np.sqrt(sum_pt2) / sum_pt
 
-    # Return the result (ptD)                                                                                                                                        \
-                                                                                                                                                                      
+    # Return the result (ptD)
     return ptD
 
 def calc_axis1_axis2(jet):
@@ -56,40 +51,33 @@ def calc_axis1_axis2(jet):
     deta_particle = np.abs(jet.eta-jet.Constituents.eta)
     dphi_particle = np.abs(normalize_angle(jet.phi-jet.Constituents.phi))
 
-    # Calculate weights (pt^2) for each constituent                                                                                                                                                                  \
-                                                                                                                                                                                                                      
+    # Calculate weights (pt^2) for each constituent
     weights_pt = jet_constpt**2
 
-    # Calculate weighted sums for each event                                                                                                                                                                         \
-                                                                                                                                                                                                                      
-    sum_weight = ak.sum(weights_pt, axis=1)  # Sum of weights (pt^2) for each event                                                                                                                                  \
-                                                                                                                                                                                                                      
+    # Calculate weighted sums for each event
+    sum_weight = ak.sum(weights_pt, axis=1)  # Sum of weights (pt^2) for each event
+
     sum_deta = ak.sum(deta_particle * weights_pt, axis=1)
     sum_dphi = ak.sum(dphi_particle * weights_pt, axis=1)
     sum_deta2 = ak.sum(deta_particle**2 * weights_pt, axis=1)
     sum_dphi2 = ak.sum(dphi_particle**2 * weights_pt, axis=1)
     sum_detadphi = ak.sum(deta_particle * dphi_particle * weights_pt, axis=1)
 
-    # Calculate averages                                                                                                                                                                                             \
-                                                                                                                                                                                                                      
+    # Calculate averages
     ave_deta = sum_deta / sum_weight
     ave_dphi = sum_dphi / sum_weight
     ave_deta2 = sum_deta2 / sum_weight
     ave_dphi2 = sum_dphi2 / sum_weight
 
-    # Calculate covariance matrix components                                                                                                                                                                         \
-                                                                                                                                                                                                                      
+    # Calculate covariance matrix components
     a = ave_deta2 - ave_deta**2
     b = ave_dphi2 - ave_dphi**2
     c = -(sum_detadphi / sum_weight - ave_deta * ave_dphi)
 
-
-    # Calculate the discriminant (delta) for each event                                                                                                                                                              \
-                                                                                                                                                                                                                      
+    # Calculate the discriminant (delta) for each event
     delta = np.sqrt(np.abs((a - b)**2 + 4 * c**2))
 
-    # Calculate axis1 (major) and axis2 (minor) for each event                                                                                                                                                       \
-                                                                                                                                                                                                                      
+    # Calculate axis1 (major) and axis2 (minor) for each event
     axis1 = np.sqrt(0.5 * (a + b + delta))
     axis2 = np.sqrt(0.5 * (a + b - delta))
 
@@ -104,7 +92,7 @@ def histogram(filename, helper):
     mask = ak.num(events.FatJet)>=2
     events = events[mask]
 
-    #get rid of None Events                                                                                                                                                                                           
+    #get rid of None Events
     mask2 = ~ak.is_none(events.Event.Number)
     events = events[mask2]
 
@@ -150,6 +138,14 @@ def histogram(filename, helper):
     events["DeltaPhi_MET_Jet1"] = np.abs(normalize_angle(events.MissingET.phi - events["Jet1_phi"]))
     events["DeltaPhi_MET_Jet2"] = np.abs(normalize_angle(events.MissingET.phi - events["Jet2_phi"]))
 
+    # add substructure quantities
+    events["Jet1_girth"] = calculate_girth(events["Jet1"])
+    events["Jet2_girth"] = calculate_girth(events["Jet2"])
+    events["Jet1_ptD"] = calculate_ptD(events["Jet1"])
+    events["Jet2_ptD"] = calculate_ptD(events["Jet2"])
+    events["Jet1_majoraxis"], events["Jet1_minoraxis"] = calc_axis1_axis2(events["Jet1"])
+    events["Jet2_majoraxis"], events["Jet2_minoraxis"] = calc_axis1_axis2(events["Jet2"])
+
     # Stable inv frac
     dark_hadron_ids = helper.darkHadronFinalIDs
     stable_particle_ids = helper.stableIDs
@@ -193,24 +189,24 @@ def histogram(filename, helper):
         "Dijet_eta": fill_hist("Dijet_eta",50,-10,10,r"$\eta_{JJ}$ [GeV]",Events),
         "Jet1_eta": fill_hist("Jet1_eta",50,-6,6,r"$\eta_{J_1}$",Events),
         "Jet2_eta": fill_hist("Jet2_eta",50,-6,6,r"$\eta_{J_2}$",Events),
-        "Dijet_phi": fill_hist("Dijet_phi",25,-4,4,r"$\phi_{JJ}$",Events),
-        "Jet1_phi": fill_hist("Jet1_phi",25,-4,4,r"$\phi_{J_1}$",Events),
-        "Jet2_phi": fill_hist("Jet2_phi",25,-4,4,r"$\phi_{J_2}$",Events),
+        "Dijet_phi": fill_hist("Dijet_phi",25,-3.15,3.15,r"$\phi_{JJ}$",Events),
+        "Jet1_phi": fill_hist("Jet1_phi",25,-3.15,3.15,r"$\phi_{J_1}$",Events),
+        "Jet2_phi": fill_hist("Jet2_phi",25,-3.15,3.15,r"$\phi_{J_2}$",Events),
         "Dijet_mass": fill_hist("Dijet_mass",50,0,2300,r"$m_{JJ}$ [GeV]",Events),
         "Jet1_mass": fill_hist("Jet1_mass",50,0,250,r"$m_{J_1}$ [GeV]",Events),
         "Jet2_mass": fill_hist("Jet2_mass",50,0,250,r"$m_{J_2}$ [GeV]",Events),
         "DeltaEta": fill_hist("DeltaEta",35,0,8.0,r"$\Delta\eta(JJ)$",Events),
-        "DeltaPhi": fill_hist("DeltaPhi",20,0,3.5,r"$\Delta\phi(JJ)$",Events),
-        "DeltaPhi_MET_Jet1": fill_hist("DeltaPhi_MET_Jet1",25,0,3.5,r"$\Delta\phi(J_1,p_{\text{T}}^{\text{miss}})$",Events),
-        "DeltaPhi_MET_Jet2": fill_hist("DeltaPhi_MET_Jet2",25,0,3.5,r"$\Delta\phi(J_2,p_{\text{T}}^{\text{miss}})$",Events),
-        "Jet1_girth": fill_hist("Jet1_girth",50,0,1,r"DeltaR",Events),
-        "Jet2_girth": fill_hist("Jet2_girth",50,0,1,r"DeltaR",Events),
-        "Jet1_ptD": fill_hist("Jet1_ptD",50,0,1.01,r"$p_{\text{tD}}(J_1)$ [GeV]",Events),
-        "Jet2_ptD": fill_hist("Jet2_ptD",50,0,1.01,r"$p_{\text{tD}}(J_2)$ [GeV]",Events),
-        "Jet1_major": fill_hist("Jet1_majoraxis",50,0,1,r"Major Axis",Events),
-        "Jet1_minor": fill_hist("Jet1_minoraxis",50,0,1,r"Minor Axis",Events),
-	"Jet2_major": fill_hist("Jet2_majoraxis",50,0,1,r"Major Axis",Events),
-	"Jet2_minor": fill_hist("Jet2_minoraxis",50,0,1,r"Minor Axis",Events),
+        "DeltaPhi": fill_hist("DeltaPhi",20,0,3.15,r"$\Delta\phi(JJ)$",Events),
+        "DeltaPhi_MET_Jet1": fill_hist("DeltaPhi_MET_Jet1",25,0,3.15,r"$\Delta\phi(J_1,p_{\text{T}}^{\text{miss}})$",Events),
+        "DeltaPhi_MET_Jet2": fill_hist("DeltaPhi_MET_Jet2",25,0,3.15,r"$\Delta\phi(J_2,p_{\text{T}}^{\text{miss}})$",Events),
+        "Jet1_girth": fill_hist("Jet1_girth",50,0,1,r"$g_{\text{jet}}(J_1)$",Events),
+        "Jet2_girth": fill_hist("Jet2_girth",50,0,1,r"$g_{\text{jet}}(J_2)$",Events),
+        "Jet1_ptD": fill_hist("Jet1_ptD",50,0,1.01,r"$D_{p_{\text{T}}}(J_1)$",Events),
+        "Jet2_ptD": fill_hist("Jet2_ptD",50,0,1.01,r"$D_{p_{\text{T}}}(J_2)$",Events),
+        "Jet1_major": fill_hist("Jet1_majoraxis",50,0,0.5,r"$\sigma_{\text{major}}(J_1)$",Events),
+        "Jet1_minor": fill_hist("Jet1_minoraxis",50,0,0.5,r"$\sigma_{\text{minor}}(J_1)$",Events),
+        "Jet2_major": fill_hist("Jet2_majoraxis",50,0,0.5,r"$\sigma_{\text{major}}(J_2)$",Events),
+        "Jet2_minor": fill_hist("Jet2_minoraxis",50,0,0.5,r"$\sigma_{\text{minor}}(J_2)$",Events),
         "stable_invisible_fraction": fill_hist("stable_invisible_fraction",25,0,1,r"$\overline{r}_{\text{inv}}$",Events)
     }
 
