@@ -1,6 +1,7 @@
 import math, os
 from string import Template
 from pathlib import Path
+from magiconfig import MagiConfig
 
 # utilities for simple calculations
 
@@ -29,10 +30,36 @@ def masses_snowmass(*, config, scale, mpi_over_scale):
     config.mrho = mrho_snowmass(mpi=config.mpi, scale=config.scale)
     return config
 
+# dark quark coupling calculation for consistency with LHC DM WG mediator width
+# (accounting for dark flavor and dark color)
+def gchi_lhcdm(*, gDM, Nc, Nf):
+    return gDM/math.sqrt(Nc*Nf)
+
+# create a single fcdc config using input numbers
+def fcdc_config(*, common, Nc, Nf, Ns):
+    configName = 'Nc{:d}Nf{:d}Ns{:d}'.format(Nc, Nf, Ns)
+    config = MagiConfig(Nc=Nc, Nf=Nf, Ns=Ns, gchi=gchi_lhcdm(gDM=1.0, Nc=Nc, Nf=Nf))
+    config.join(common)
+    return configName, config
+
+# create spread of fcdc configs for Nc=Nf case
+def fcdc_configs_NcNf1(*, common):
+    Nf_min = 3
+    Nf_max = 8
+    Ns_min = 1
+
+    config = MagiConfig()
+    for Nf_val in range(Nf_min,Nf_max+1):
+        Ns_max = Nf_val - 2
+        for Ns_val in range(Ns_min, Ns_max+1):
+            this_name, this_config = fcdc_config(common=common, Nc=Nf_val, Nf=Nf_val, Ns=Ns_val)
+            setattr(config, this_name, this_config)
+    return config
+
 # classes for helper
 
 class quark(object):
-    def __init__(self,id,mass):
+    def __init__(self,*,id,mass):
         self.id = id
         self.mass = mass
         self.massrun = mass
@@ -82,11 +109,12 @@ class quarklist(object):
         # using Pythia masses
         # would be nice to get these directly from Pythia to ensure consistency
         self.qlist = [
-            quark(1,0.33), # down
-            quark(2,0.33), # up
-            quark(3,0.5),  # strange
-            quark(4,1.5),  # charm
-            quark(5,4.8),  # bottom
+            quark(id=1,mass=0.33), # down
+            quark(id=2,mass=0.33), # up
+            quark(id=3,mass=0.5),  # strange
+            quark(id=4,mass=1.5),  # charm
+            quark(id=5,mass=4.8),  # bottom
+            quark(id=6,mass=173.0), # top
         ]
         self.scale = None
         self.runner = massRunner()
@@ -119,12 +147,11 @@ class quarklist(object):
         return [q for q in self.qlist if (q.active if active else q.on)]
 
 class darkHadron():
-    def __init__(self, id, mass, decay, props=[], rinv=None, dm=None, decay_args=None, Nf=None, placeholder=False):
+    def __init__(self, helper, *, id, mass, decay, props=[], rinv=None, dm=None, placeholder=False, auto_rinv=True):
         self.id = id
         self.mass = mass
         self.decay = decay
-        self.decay_args = decay_args
-        self.Nf = Nf
+        self.helper = helper
         self.props = props
         self.placeholder = placeholder
         if not hasattr(self, self.decay+'Decay'):
@@ -140,11 +167,13 @@ class darkHadron():
             self.rvis = 1
         else:
             self.rvis = 1 - self.rinv
+        self.auto_rinv = auto_rinv
 
     def getLines(self):
-        lines = ['{:d}:m0 = {:g}'.format(self.id,self.mass)]
+        lines = []
         lines += ['{:d}:'.format(self.id)+prop for prop in self.props]
-        if self.rinv is not None:
+        lines += ['{:d}:m0 = {:g}'.format(self.id,self.mass)]
+        if self.rinv is not None and self.auto_rinv:
             lines += self.invisibleDecay()
         lines += getattr(self, self.decay+'Decay')()
         # first channel should be oneChannel
@@ -189,10 +218,6 @@ class darkHadron():
         lines = ['{:d}:addChannel = 1 {:g} 91 {:d} -{:d}'.format(self.id,q.bf,q.id,q.id) for q in theQuarks if q.bf>0]
         return lines
 
-    def darkPionDecay(self):
-        lines = ['{:d}:addChannel = 1 1 101 {:d} {:d}'.format(self.id,self.decay_args[0],self.decay_args[1])]
-        return lines
-
     def getDarkQuark(self):
         quarkIndex = str(self.id)[4]
         return int(quarkIndex)
@@ -201,118 +226,174 @@ class darkHadron():
         antiQuarkIndex = str(self.id)[5]
         return int(antiQuarkIndex)
 
+    @staticmethod
+    def getDarkMeson(*, dq, adq, spin):
+        spin_final_digit = {
+            0: 1,
+            1: 3,
+        }
+        dq1 = max(dq, adq)
+        dq2 = min(dq, adq)
+        final = spin_final_digit[spin]
+        id = f'4900{dq1}{dq2}{final}'
+        return int(id)
+
     def darkRhoDecay(self):
-        lines = []
-        # equal branching fraction to all dark quark flavors
-        branching_fraction = 1/ self.Nf
+        if self.mass > 2*self.helper.mpi:
+            return self.darkRho2BodyDecay()
+        else:
+            # if a) diagonal or b) off-diagonal but with FCDCs (unstable dark quark), rho goes directly to qq (SM) when pipi not allowed
+            return self.democraticDecay()
+
+    def darkRhoProtectedDecay(self):
+        if self.mass > 2*self.helper.mpi:
+            return self.darkRho2BodyDecay()
+        else:
+            # "protected" rho (off-diagonal, no FCDCs) can only decay through 3-body
+            return self.darkRho3BodyDecay()
+
+    def darkRho2BodyDecay(self):
         darkQuarkFromRho = self.getDarkQuark()
         antiDarkQuarkFromRho = self.getAntiDarkQuark()
 
-        for n in range(1,self.Nf+1):
-            # I don't really like this so I will try to come up with a better way but for now I think it is at least correct
-            if n > darkQuarkFromRho:
-                decay1 = -1 * int('4900{:d}{:d}1'.format(n, darkQuarkFromRho) )
-            else:
-                decay1 = int('4900{:d}{:d}1'.format(darkQuarkFromRho, n) )
-            if n > antiDarkQuarkFromRho:
-                decay2 = int('4900{:d}{:d}1'.format(n, antiDarkQuarkFromRho) )
-            else:
-                decay2 = -1 * int('4900{:d}{:d}1'.format(antiDarkQuarkFromRho, n) )
-            lines.append('{:d}:addChannel = 1 {:03f} 101 {:d} {:d}'.format(self.id, branching_fraction, decay1, decay2))
+        etaPrime = self.getDarkMeson(dq=self.helper.Nf, adq=self.helper.Nf, spin=0)
+        allowed = []
+        for n in range(1, self.helper.Nf+1):
+            sign1 = -1 if n > darkQuarkFromRho else 1
+            sign2 = 1 if n > antiDarkQuarkFromRho else -1
+            meson1 = sign1 * self.getDarkMeson(dq=n, adq=darkQuarkFromRho, spin=0)
+            meson2 = sign2 * self.getDarkMeson(dq=n, adq=antiDarkQuarkFromRho, spin=0)
+            # etaPrime taken to be heavy (probKeepEta1=0), so exclude from allowed decays
+            if abs(meson1)==etaPrime or abs(meson2)==etaPrime:
+                continue
+            allowed.append(
+                (meson1, meson2)
+            )
+
+        # equal branching fraction to all allowed combinations of dark quark flavors
+        lines = []
+        bf = 1.0/len(allowed)
+        for decay1, decay2 in allowed:
+            lines.append('{:d}:addChannel = 1 {:03f} 101 {:d} {:d}'.format(self.id, bf, decay1, decay2))
+
+        return lines
+
+    def darkRho3BodyDecay(self):
+        darkQuarkFromRho = self.getDarkQuark()
+        antiDarkQuarkFromRho = self.getAntiDarkQuark()
+
+        # this *should* only ever be a stable dark pion
+        darkPion = self.getDarkMeson(dq=darkQuarkFromRho, adq=antiDarkQuarkFromRho, spin=0)
+        thisBR = 1.0
+        # to reuse this for simplified case
+        if self.dm:
+            darkPion = self.dm
+            thisBR = self.rinv
+        # compute allowed decays to quarks
+        self.quarks.set(self.mass - self.helper.mpi)
+        theQuarks = self.quarks.get()
+        bfQuarks = thisBR/float(len(theQuarks))
+        lines = [
+            '{:d}:addChannel = 1 {:g} 101 {} {:d} -{:d}'.format(self.id,bfQuarks,darkPion,q.id,q.id) for q in theQuarks
+        ]
+        return lines
+
+    def darkRhoSimpDecay(self):
+        if self.mass > 2*self.helper.mpi:
+            # no rinv in this case, just rho -> pi pi
+            self.rinv = None
+            return self.darkRho2BodySimpDecay()
+        else:
+            return self.darkRho3BodySimpDecay()
+
+    def darkRho2BodySimpDecay(self):
+        decay_args = []
+        if self.id==4900113:
+            decay_args = [4900211, -4900211]
+        elif self.id==4900213:
+            decay_args = [4900111, 4900211]
+        lines = ['{:d}:addChannel = 1 1 101 {:d} {:d}'.format(self.id,decay_args[0],decay_args[1])]
+        return lines
+
+    def darkRho3BodySimpDecay(self):
+        # in complete model, rho 3-body decays correspond to stable pions (in terms of flavor)
+        # while other rhos decay fully visibly (qq)
+        # therefore, in simplified model, two decay types:
+        # rho -> pi qq with BR = rinv
+        # rho -> qq with BR = 1-rinv
+        lines = self.democraticDecay() + self.darkRho3BodyDecay()
         return lines
 
 class hvSpectrum():
     def __init__(self, name, helper):
-        self.lines_spectrum = {'customLines': [], 'darkHadrons': []}
-        self._bDark = 0.982
-        self.separateFlav = False
+        self.customLines = []
+        self.darkHadrons = []
+        self.helper = helper
 
         if not hasattr(self, name+'Spectrum'):
             raise ValueError("unknown spectrum {}".format(name))
-        getattr(self, name+'Spectrum')(helper)
+        getattr(self, name+'Spectrum')()
 
-    def channelLines(self, helper):
-        if helper.channel=='s':
-            return self.sChannel(helper)
-        else:
-            raise ValueError(f"Unknown channel {helper.channel}")
-
-    # helper for common leptophobic Z' lines
-    def sChannel(self, helper):
-        lines = [
-            # parameters for leptophobic Z'
-            '4900023:m0 = {:g}'.format(helper.mmed),
-            '4900023:mMin = {:g}'.format(helper.mmin),
-            '4900023:mMax = {:g}'.format(helper.mmax),
-            '4900023:mWidth = 0.01',
+    # helper for common dark quark/hadron lines in simple setup
+    def quarkLines(self):
+        return [
+            # fermionic dark quark
+            '4900101:m0 = {:g}'.format(self.helper.mq),
+            # define missing antiparticles
+            '4900111:antiName = pivDiagbar',
+            '4900113:antiName = rhovDiagbar',
         ]
 
-        if not self.separateFlav:
-            lines.extend([
-                # fermionic dark quark
-                '4900101:m0 = {:g}'.format(helper.mq),
-                # parameters for leptophobic Z'
-                '4900023:oneChannel = 1 {} 102 4900101 -4900101'.format(self._bDark),
-                # define missing antiparticles
-                '4900111:antiName = pivDiagbar',
-                '4900113:antiName = rhovDiagbar',
-            ])
-        else:
-            lines.extend([
-                'HiddenValley:separateFlav = on',
-            ])
-
-            # for separateFlav=on, set masses of all the dark
-            for i in range(1, helper.Nf+1):
-                lines.append('490010{:g}:m0 = {:g}'.format(i, helper.mq))
-
-            # divide up Z' BF between the Nf quarks
-            bf = self._bDark / helper.Nf
-            for i in range(1, helper.Nf+1):
-                if i==1: line = '4900023:oneChannel = 1 {:3f} 102 490010{:g} -490010{:g}'.format(bf, i, i)
-                else: line = '4900023:addChannel = 1 {:3f} 102 490010{:g} -490010{:g}'.format(bf, i, i)
-                lines.append(line)
+    # helper for common dark quark/hadron lines in separateFlav setup
+    def quarkLinesSeparate(self):
+        lines = [
+            'HiddenValley:separateFlav = on',
+            # disable eta prime production: Nf^2-1 accessible states
+            'HiddenValley:probKeepEta1 = 0',
+        ]
+        # for separateFlav=on, set masses of all the dark quarks
+        for i in range(1, self.helper.Nf+1):
+            lines.append('490010{:d}:m0 = {:g}'.format(i, self.helper.mq))
 
         return lines
 
     # helper for common invisible particles
     def dmForRinv(self):
         return [
-            darkHadron(51,0.0,'stable',props=['isResonance = false'],placeholder=True),
-            darkHadron(52,0.0,'stable',props=['isResonance = false'],placeholder=True),
-            darkHadron(53,0.0,'stable',props=['isResonance = false'],placeholder=True),
+            darkHadron(self.helper,id=51,mass=0.0,decay='stable',props=['isResonance = false'],placeholder=True),
+            darkHadron(self.helper,id=52,mass=0.0,decay='stable',props=['isResonance = false'],placeholder=True),
+            darkHadron(self.helper,id=53,mass=0.0,decay='stable',props=['isResonance = false'],placeholder=True),
         ]
 
-    def cmsSpectrum(self, helper):
-        self.lines_spectrum['customLines'] = self.channelLines(helper)
-        self.lines_spectrum['darkHadrons'] = self.dmForRinv() + [
-            darkHadron(4900111,helper.mpi,'massInsertion',rinv=helper.rinv,dm=51),
-            darkHadron(4900211,helper.mpi,'massInsertion',rinv=helper.rinv,dm=51),
-            darkHadron(4900113,helper.mrho,'democratic',rinv=helper.rinv,dm=53),
-            darkHadron(4900213,helper.mrho,'democratic',rinv=helper.rinv,dm=53),
+    def cmsSpectrum(self):
+        self.customLines = self.quarkLines()
+        self.darkHadrons = self.dmForRinv() + [
+            darkHadron(self.helper,id=4900111,mass=self.helper.mpi,decay='massInsertion',rinv=self.helper.rinv,dm=51),
+            darkHadron(self.helper,id=4900211,mass=self.helper.mpi,decay='massInsertion',rinv=self.helper.rinv,dm=51),
+            darkHadron(self.helper,id=4900113,mass=self.helper.mrho,decay='democratic',rinv=self.helper.rinv,dm=53),
+            darkHadron(self.helper,id=4900213,mass=self.helper.mrho,decay='democratic',rinv=self.helper.rinv,dm=53),
         ]
 
-    def snowmassSpectrum(self, helper):
-        self.lines_spectrum['customLines'] = self.channelLines(helper)
-        self.lines_spectrum['darkHadrons'] = self.dmForRinv() + [
-            darkHadron(4900111,helper.mpi,'massInsertion',rinv=helper.rinv,dm=53),
-            darkHadron(4900211,helper.mpi,'stable'),
-            darkHadron(4900113,helper.mrho,'darkPion',decay_args=[4900211,-4900211]),
-            darkHadron(4900213,helper.mrho,'darkPion',decay_args=[4900111,4900211]),
+    def snowmassSpectrum(self):
+        self.customLines = self.quarkLines()
+        self.darkHadrons = self.dmForRinv() + [
+            darkHadron(self.helper,id=4900111,mass=self.helper.mpi,decay='massInsertion',rinv=self.helper.rinv,dm=51),
+            darkHadron(self.helper,id=4900211,mass=self.helper.mpi,decay='stable'),
+            darkHadron(self.helper,id=4900113,mass=self.helper.mrho,decay='darkRho2BodySimp'), # 3-body case not explored here
+            darkHadron(self.helper,id=4900213,mass=self.helper.mrho,decay='darkRho2BodySimp'),
         ]
 
-    def snowmass_cmslikeSpectrum(self, helper):
-        self.lines_spectrum['customLines'] = self.channelLines(helper)
-        self.lines_spectrum['darkHadrons'] = self.dmForRinv() + [
-            darkHadron(4900111,helper.mpi,'massInsertion',rinv=helper.rinv,dm=53),
-            darkHadron(4900211,helper.mpi,'massInsertion',rinv=helper.rinv,dm=53),
-            darkHadron(4900113,helper.mrho,'darkPion',decay_args=[4900211,-4900211]),
-            darkHadron(4900213,helper.mrho,'darkPion',decay_args=[4900111,4900211]),
+    def snowmass_cmslikeSpectrum(self):
+        self.customLines = self.quarkLines()
+        self.darkHadrons = self.dmForRinv() + [
+            darkHadron(self.helper,id=4900111,mass=self.helper.mpi,decay='massInsertion',rinv=self.helper.rinv,dm=51),
+            darkHadron(self.helper,id=4900211,mass=self.helper.mpi,decay='massInsertion',rinv=self.helper.rinv,dm=51),
+            darkHadron(self.helper,id=4900113,mass=self.helper.mrho,decay='darkRho2BodySimp'), # 3-body case not explored here
+            darkHadron(self.helper,id=4900213,mass=self.helper.mrho,decay='darkRho2BodySimp'),
         ]
 
-    def fcdcSpectrum(self, helper):
-        self.separateFlav = True
-        self.lines_spectrum['customLines'] = self.channelLines(helper)
+    def fcdcSpectrum(self):
+        self.customLines = self.quarkLinesSeparate()
 
         #meson names are pivij and rhovij, where i = j are the flavour-diagonal mesons
         #else i > j, with j representing the antiquark.
@@ -325,31 +406,121 @@ class hvSpectrum():
 
         hadronLines = []
         antiLines = []
-        for i in range(1, helper.Nf+1):
-            for j in range(1, helper.Nf+1):
+        for i in range(1, self.helper.Nf+1):
+            for j in range(1, self.helper.Nf+1):
                 if i < j: continue
-                pid_scalar = int(f'4900{i}{j}1')
-                pid_vector = int(f'4900{i}{j}3')
+                pid_scalar = darkHadron.getDarkMeson(dq=i, adq=j, spin=0)
+                pid_vector = darkHadron.getDarkMeson(dq=i, adq=j, spin=1)
                 antiLines.extend([
                     f'{pid_scalar}:antiName = piv{i}{j}bar',
                     f'{pid_vector}:antiName = rhov{i}{j}bar',
                 ])
                 if i == j:
                     # diagonal scalar unstable
-                    hadronLines.append(darkHadron(pid_scalar,helper.mpi,'massInsertion'))
-                    # diagonal vector unstable
-                    # decays to stable non-diagonal scalars? which ones? 4900211,4900311?
-                    hadronLines.append(darkHadron(pid_vector,helper.mrho,'darkRho', Nf=helper.Nf))
+                    hadronLines.append(darkHadron(self.helper,id=pid_scalar,mass=self.helper.mpi,decay='massInsertion'))
+                    # diagonal vector unstable; decays to scalars
+                    hadronLines.append(darkHadron(self.helper,id=pid_vector,mass=self.helper.mrho,decay='darkRho'))
                 else:
                     # only stable if carrying a stable quark... first Ns quarks are stable
-                    if i <= helper.Ns or j<= helper.Ns:
-                        hadronLines.append(darkHadron(pid_scalar,helper.mpi,'stable'))
+                    if i <= self.helper.Ns or j<= self.helper.Ns:
+                        hadronLines.append(darkHadron(self.helper,id=pid_scalar,mass=self.helper.mpi,decay='stable'))
+                        hadronLines.append(darkHadron(self.helper,id=pid_vector,mass=self.helper.mrho,decay='darkRhoProtected'))
                     else:
-                        hadronLines.append(darkHadron(pid_scalar,helper.mpi,'massInsertion'))
-                    hadronLines.append(darkHadron(pid_vector,helper.mrho,'darkRho', Nf=helper.Nf))
+                        hadronLines.append(darkHadron(self.helper,id=pid_scalar,mass=self.helper.mpi,decay='massInsertion'))
+                        hadronLines.append(darkHadron(self.helper,id=pid_vector,mass=self.helper.mrho,decay='darkRho'))
 
-        self.lines_spectrum['darkHadrons'] = self.dmForRinv() + hadronLines
-        self.lines_spectrum['customLines'] += antiLines
+        self.darkHadrons = hadronLines
+        self.customLines += antiLines
+
+    def fcdcSimpSpectrum(self):
+        self.customLines = self.quarkLines()
+        # for 3-body decay
+        stableDarkPion = 4900210
+        self.darkHadrons = self.dmForRinv() + [
+            darkHadron(self.helper,id=stableDarkPion,mass=self.helper.mpi,decay='stable',props=['new = pivStable pivStablebar 1 0 0']),
+            darkHadron(self.helper,id=4900111,mass=self.helper.mpi,decay='massInsertion',rinv=self.helper.rinv,dm=51),
+            darkHadron(self.helper,id=4900211,mass=self.helper.mpi,decay='massInsertion',rinv=self.helper.rinv,dm=51),
+            darkHadron(self.helper,id=4900113,mass=self.helper.mrho,decay='darkRhoSimp',rinv=self.helper.rinv,dm=stableDarkPion,auto_rinv=False),
+            darkHadron(self.helper,id=4900213,mass=self.helper.mrho,decay='darkRhoSimp',rinv=self.helper.rinv,dm=stableDarkPion,auto_rinv=False),
+        ]
+
+class hvChannel():
+    def __init__(self, name, helper):
+        self.customLines = []
+        self.helper = helper
+
+        if not hasattr(self, name+'Channel'):
+            raise ValueError("unknown channel {}".format(name))
+        getattr(self, name+'Channel')()
+
+    def sChannel(self):
+        # leading order branching fraction calculation
+        # factors of mMed/(12pi) divide out
+        # correct branching fractions -> correct Zprime width and cross section
+        quarks = quarklist()
+        quarks.set(self.helper.mmed)
+        theQuarks = quarks.get()
+        NcSM = 3
+        NfSM = len(theQuarks)
+        Wq = NcSM*NfSM*(self.helper.gq**2)
+        Wchi = self.helper.Nc*self.helper.Nf*(self.helper.gchi**2)
+        Wtot = Wq + Wchi
+        # get per-particle branching fractions
+        Bq = Wq/Wtot/NfSM
+        Bchi = Wchi/Wtot/self.helper.Nf
+        # calculate total width
+        Gtot = Wtot*self.helper.mmed/(12*math.pi)
+
+        self.mediatorID = 4900023
+        # cut off low mediator masses from low-momentum PDFs
+        mSigma = 5 # following Pythia8 SLHA convention
+        mMinMin = 50
+        mMin = max(self.helper.mmed - Gtot*mSigma, mMinMin)
+        mMax = self.helper.mmed + Gtot*mSigma
+        self.customLines = [
+            'HiddenValley:ffbar2Zv = on',
+            # parameters for leptophobic Z'
+            f'{self.mediatorID}:m0 = {self.helper.mmed:g}',
+            f'{self.mediatorID}:mWidth = {Gtot:g}', # manual calculation
+            f'{self.mediatorID}:mMin = {mMin:g}',
+            f'{self.mediatorID}:mMax = {mMax:g}',
+        ]
+
+        # divide up Z' BF between the Nf quarks
+        dark_quarks = []
+        for i in range(1, self.helper.Nf+1):
+            dq = f'490010{i}'
+            dark_quarks.append(dq)
+            if i==1: line = f'{self.mediatorID}:oneChannel = 1 {Bchi:3f} 102 {dq} -{dq}'
+            else: line = f'{self.mediatorID}:addChannel = 1 {Bchi:3f} 102 {dq} -{dq}'
+            self.customLines.append(line)
+
+        # SM quark couplings needed to produce Zprime from pp initial state
+        self.customLines.extend([
+            f'{self.mediatorID}:addChannel = 1 {Bq:3f} 102 {quark.id} -{quark.id}' for quark in theQuarks
+        ])
+
+        # only save events with Zprime -> dark quarks
+        self.customLines.extend([
+            f'{self.mediatorID}:onMode = off',
+            f'{self.mediatorID}:onIfAny = {" ".join(dark_quarks)}',
+        ])
+
+        # decouple t-channel mediator particles
+        self.customLines.extend([
+            '4900001:m0 = 10000',
+            '4900002:m0 = 10000',
+            '4900003:m0 = 10000',
+            '4900004:m0 = 10000',
+            '4900005:m0 = 10000',
+            '4900006:m0 = 10000',
+            '4900011:m0 = 10000',
+            '4900012:m0 = 10000',
+            '4900013:m0 = 10000',
+            '4900014:m0 = 10000',
+            '4900015:m0 = 10000',
+            '4900016:m0 = 10000',
+        ])
 
 class baseHelper():
     @staticmethod
@@ -415,6 +586,8 @@ class svjHelper(baseHelper):
         parser.add_argument("--pvector",type=float,required=True,help="probability of producing rho (vs. pion)")
         parser.add_argument("--rinv",type=float,default=None,help="invisible fraction")
         parser.add_argument("--spectrum",type=str,required=True,help="dark hadron spectrum scheme")
+        parser.add_argument("--gq",type=float,default=True,help="Zprime quark coupling")
+        parser.add_argument("--gchi",type=float,default=True,help="Zprime dark quark coupling")
 
     def __init__(self,args):
         super().__init__(args)
@@ -425,20 +598,21 @@ class svjHelper(baseHelper):
             if self.rinv<0 or self.rinv>1:
                 raise ValueError(f'rinv {self.rinv} not allowed (0 <= rinv <= 1)')
 
-        # make this width more realistic based on couplings?
-        self.mmin = self.mmed-1
-        self.mmax = self.mmed+1
+        # set up production channel
+        self.channelHelper = hvChannel(self.channel, self)
+        self.channelLines = self.channelHelper.customLines
+        self.mediatorID = self.channelHelper.mediatorID
 
         # set up spectrum
-        spectrumHelper = hvSpectrum(self.spectrum, self)
-        self.customSpectrum = spectrumHelper.lines_spectrum['customLines']
-        self.spectrumParticles = spectrumHelper.lines_spectrum['darkHadrons']
+        self.spectrumHelper = hvSpectrum(self.spectrum, self)
+        self.spectrumLines = self.spectrumHelper.customLines
+        self.spectrumParticles = self.spectrumHelper.darkHadrons
         self.darkHadronIDs = [dh.id for dh in self.spectrumParticles if not dh.placeholder]
-        self.darkHadronFinalIDs = [dh.id for dh in self.spectrumParticles if not dh.placeholder and dh.decay!='darkPion']
+        self.darkHadronFinalIDs = [dh.id for dh in self.spectrumParticles if not dh.placeholder and 'darkRho' not in dh.decay]
         self.stableIDs = [dh.id for dh in self.spectrumParticles if dh.decay=='stable']
 
         # metadata tracking
-        self.always_included = ["channel","mmed","Nc","Nf","scale","mq","mpi","mrho","pvector","spectrum"]
+        self.always_included = ["channel","mmed","Nc","Nf","scale","mq","mpi","mrho","pvector","spectrum","gq","gchi"]
         self.special_formats = {
             "channel": "{1}-{0}",
             "spectrum": "{}-{}",
@@ -467,33 +641,6 @@ class svjHelper(baseHelper):
         return metadict
 
     def getPythiaSettings(self):
-        lines_channel = {
-            's': [
-                # SM quark couplings needed to produce Zprime from pp initial state
-                '4900023:addChannel = 1 0.003 102 1 -1',
-                '4900023:addChannel = 1 0.003 102 2 -2',
-                '4900023:addChannel = 1 0.003 102 3 -3',
-                '4900023:addChannel = 1 0.003 102 4 -4',
-                '4900023:addChannel = 1 0.003 102 5 -5',
-                '4900023:addChannel = 1 0.003 102 6 -6',
-                'HiddenValley:ffbar2Zv = on',
-                # decouple
-                '4900001:m0 = 10000',
-                '4900002:m0 = 10000',
-                '4900003:m0 = 10000',
-                '4900004:m0 = 10000',
-                '4900005:m0 = 10000',
-                '4900006:m0 = 10000',
-                '4900011:m0 = 10000',
-                '4900012:m0 = 10000',
-                '4900013:m0 = 10000',
-                '4900014:m0 = 10000',
-                '4900015:m0 = 10000',
-                '4900016:m0 = 10000',
-            ],
-        }
-        if self.channel not in lines_channel:
-            raise ValueError("Unknown channel {}".format(self.channel))
         lines_HV = [
             # other HV params
             'HiddenValley:Ngauge = {:d}'.format(self.Nc),
@@ -508,7 +655,7 @@ class svjHelper(baseHelper):
         ]
         lines_decay = [line for dh in self.spectrumParticles for line in dh.getLines()]
 
-        lines = self.customSpectrum + lines_channel[self.channel] + lines_HV + lines_decay
+        lines = self.channelLines + lines_HV + self.spectrumLines + lines_decay
         return lines
 
 class extHelper(baseHelper):
