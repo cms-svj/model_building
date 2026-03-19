@@ -42,9 +42,8 @@ class DelphesSchema2(DelphesSchema):
 
     # avoid weird error when adding constituents
     def __init__(self, base_form):
-        for key in list(base_form["contents"].keys()):
-            if "fBits" in key:
-                base_form["contents"].pop(key, None)
+		# these two lists have to be kept in sync: zip, drop, unzip
+        base_form["fields"], base_form["contents"] = zip(*[entry for entry in zip(base_form["fields"], base_form["contents"]) if not "fBits" in entry[0]])
         super().__init__(base_form)
 
 # ignore unnecessary warning
@@ -52,8 +51,8 @@ from numba.core.errors import NumbaTypeSafetyWarning
 import warnings
 warnings.simplefilter('ignore',category=NumbaTypeSafetyWarning)
 # optimized kernel for jet:constituent matching within an event
-@nb.njit("i8[:](i8[:],u4[:])")
-def get_constituents_kernel(jet_refs: NDArray[np.int64], cand_ids: NDArray[np.uint32]) -> NDArray[np.int64]:
+@nb.njit("i8[:](i4[:],u4[:])")
+def get_constituents_kernel(jet_refs: NDArray[np.int32], cand_ids: NDArray[np.uint32]) -> NDArray[np.int64]:
     # get hash table mapping global index : global unique ID
     hash_table = {k:v for v,k in enumerate(cand_ids)}
     # apply hash map
@@ -110,12 +109,13 @@ def load_events(filename,schema=DelphesSchema,metadict=None,with_constituents=Fa
     from coffea.nanoevents import NanoEventsFactory
     if with_constituents and schema==DelphesSchema:
         schema = DelphesSchema2
+
     events = NanoEventsFactory.from_root(
-        file=filename,
-        treepath="Delphes",
+        file={filename : "Delphes"},
         schemaclass=schema,
         metadata=metadict,
     ).events()
+
     if with_constituents:
         events = init_constituents(events)
     return events
