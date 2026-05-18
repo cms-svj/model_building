@@ -35,6 +35,13 @@ def masses_snowmass(*, config, scale, mpi_over_scale):
 def gchi_lhcdm(*, gDM, Nc, Nf):
     return gDM/math.sqrt(Nc*Nf)
 
+# rinv calculation for FCDC complete model
+# neglects eta prime meson: assumed to be heavy (from anomaly), therefore rarely produced
+def fcdc_rinv(*, Nf, Ns):
+    Nu = Nf-Ns
+    rinv = (Nf*(Nf-1) - Nu*(Nu-1)) / (Nf**2 - 1)
+    return rinv
+
 # create a single fcdc config using input numbers
 def fcdc_config(*, common, Nc, Nf, Ns):
     configName = 'Nc{:d}Nf{:d}Ns{:d}'.format(Nc, Nf, Ns)
@@ -42,8 +49,15 @@ def fcdc_config(*, common, Nc, Nf, Ns):
     config.join(common)
     return configName, config
 
+# create simplified equivalent of above using input rinv
+def fcdc_config_simp(*, common, rinv):
+    configName = 'rinv{:.3f}'.format(rinv).replace('.','p')
+    config = MagiConfig(rinv=rinv)
+    config.join(common)
+    return configName, config
+
 # create spread of fcdc configs for Nc=Nf case
-def fcdc_configs_NcNf1(*, common):
+def fcdc_configs_NcNf1(*, common, simp=False):
     Nf_min = 3
     Nf_max = 8
     Ns_min = 1
@@ -52,9 +66,98 @@ def fcdc_configs_NcNf1(*, common):
     for Nf_val in range(Nf_min,Nf_max+1):
         Ns_max = Nf_val - 2
         for Ns_val in range(Ns_min, Ns_max+1):
-            this_name, this_config = fcdc_config(common=common, Nc=Nf_val, Nf=Nf_val, Ns=Ns_val)
+            if simp:
+                this_name, this_config = fcdc_config_simp(common=common, rinv=fcdc_rinv(Nf=Nf_val, Ns=Ns_val))
+            else:
+                this_name, this_config = fcdc_config(common=common, Nc=Nf_val, Nf=Nf_val, Ns=Ns_val)
             setattr(config, this_name, this_config)
     return config
+
+# 3-body functions
+
+def alpha_numeric(*, mrho, mpi, mq):
+    # numerical computation of alpha = <E_pi>/<E_rho> from 3-body phase-space integrals
+    import numpy as np
+    from scipy import integrate
+
+    s_min = 4.0 * mq * mq
+    s_max = (mrho - mpi)**2
+
+    if s_max <= s_min:
+        return 1.0  # no phase space
+
+    def lam(a, b, c):
+        return a*a + b*b + c*c - 2.0*(a*b + a*c + b*c)
+
+    def phase_space(s):
+        L1 = lam(mrho*mrho, mpi*mpi, s)
+        L2 = lam(s, mq*mq, mq*mq)
+        return np.sqrt(L1 * L2)
+
+    # this can be generalized to any weight function
+    # currently just power law
+    s_power = 0
+    def weight(s):
+        return s**s_power
+
+    def weight_D(s):
+        return weight(s) * phase_space(s) / s
+
+    def weight_I1(s):
+        return weight(s) * phase_space(s)
+
+    D_val, _ = integrate.quad(weight_D, s_min, s_max, limit=200)
+    I1_val, _ = integrate.quad(weight_I1, s_min, s_max, limit=200)
+
+    alpha = (mrho*mrho + mpi*mpi)/(2.0*mrho*mrho) - I1_val/(2.0*mrho*mrho*D_val)
+
+    return alpha
+
+# average alpha over all allowed q qbar decays
+def alpha_mean(*, mrho, mpi):
+    import numpy as np
+    quarks = quarklist()
+    quarks.set(mrho - mpi)
+    theQuarks = quarks.get()
+    alphas = [alpha_numeric(mrho=mrho, mpi=mpi, mq=q.mass) for q in theQuarks]
+    alpha = np.mean(alphas)
+    return alpha
+
+def fcdc_rinv_3body(*, Nf, Ns, mrho, mpi, pvector, alpha=None):
+    # off-diagonal pi w/ no FCDC: stable
+    # off-diagonal rho w/ no FCDC: decay to pi q qbar (pi stable)
+    # all others decay to q qbar (mass insertion or democratic)
+
+    Nu = Nf-Ns
+    Nstable = Nf*(Nf-1) - Nu*(Nu-1)
+    Npi = Nf**2-1 # neglect eta prime
+    Nrho = Nf**2
+
+    if alpha is None:
+        alpha = alpha_mean(mrho=mrho, mpi=mpi)
+
+    numer_pi = (1-pvector)*Nstable
+    numer_rho = alpha*pvector*Nstable
+    denom_pi = (1-pvector)*Npi
+    denom_rho = pvector*Nrho
+
+    rinv = (numer_pi + numer_rho) / (denom_pi + denom_rho)
+    return rinv
+
+def fcdc_rinv_3body_simp(*, rinv, Nf, mrho, mpi, pvector, alpha=None):
+    Npi = Nf**2-1 # neglect eta prime
+    Nrho = Nf**2
+
+    if alpha is None:
+        alpha = alpha_mean(mrho=mrho, mpi=mpi)
+
+    numer_pi = (1-pvector)*rinv*Npi
+    numer_rho = alpha*pvector*rinv*Nrho
+    denom_pi = (1-pvector)*Npi
+    denom_rho = pvector*Nrho
+
+    rinv_eff = (numer_pi + numer_rho) / (denom_pi + denom_rho)
+    return rinv_eff
 
 # classes for helper
 
@@ -342,6 +445,8 @@ class hvSpectrum():
             # define missing antiparticles
             '4900111:antiName = pivDiagbar',
             '4900113:antiName = rhovDiagbar',
+            # disable eta prime production: Nf^2-1 accessible states
+            'HiddenValley:probKeepEta1 = 0',
         ]
 
     # helper for common dark quark/hadron lines in separateFlav setup
@@ -559,8 +664,11 @@ class baseHelper():
         HVEnergyFractions = '\n'.join(["  add EnergyFraction {{{}}} {{0}}".format(id) for id in self.stableIDs])
         stableIDs_with_neg = add_neg(self.stableIDs)
         HVNuFilter = '\n'.join(pdg_lines(stableIDs_with_neg))
+        HVDaughterFilter = HVNuFilter.replace("PdgCode", "PdgDaughter")
         darkHadronIDs_with_neg = add_neg(self.darkHadronIDs)
         HVDarkHadronFilter = '\n'.join(pdg_lines(darkHadronIDs_with_neg))
+        darkHadronFinalIDs_with_neg = add_neg(self.darkHadronFinalIDs)
+        HVDarkHadronFinalFilter = '\n'.join(pdg_lines(darkHadronFinalIDs_with_neg))
 
         with input.open() as infile:
             old_lines = Template(infile.read())
@@ -568,6 +676,8 @@ class baseHelper():
                 HVEnergyFractions = HVEnergyFractions,
                 HVNuFilter = HVNuFilter,
                 HVDarkHadronFilter = HVDarkHadronFilter,
+                HVDaughterFilter = HVDaughterFilter,
+                HVDarkHadronFinalFilter = HVDarkHadronFinalFilter,
             )
         return new_lines
 
@@ -638,6 +748,12 @@ class svjHelper(baseHelper):
         metadict["darkHadronFinalIDs"] = self.darkHadronFinalIDs
         if self.rinv is not None:
             metadict["rinv"] = self.rinv
+            if self.mrho < 2*self.mpi:
+                metadict["rinv_3body"] = fcdc_rinv_3body_simp(rinv=self.rinv, Nf=self.Nf, mrho=self.mrho, mpi=self.mpi, pvector=self.pvector)
+        if self.Ns is not None:
+            metadict["rinv"] = fcdc_rinv(Nf=self.Nf, Ns=self.Ns)
+            if self.mrho < 2*self.mpi:
+                metadict["rinv_3body"] = fcdc_rinv_3body(Nf=self.Nf, Ns=self.Ns, mrho=self.mrho, mpi=self.mpi, pvector=self.pvector)
         return metadict
 
     def getPythiaSettings(self):
