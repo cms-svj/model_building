@@ -73,8 +73,22 @@ def fcdc_configs_NcNf1(*, common, simp=False):
             setattr(config, this_name, this_config)
     return config
 
-# 3-body functions
+# create spread of fcdc configs for varying Nc and Nf separately
+def fcdc_configs_NcNfAll(*, common):
+    Nf_min = 3
+    Nf_max = 8
+    Ns_min = 1
 
+    config = MagiConfig()
+    for Nc_val in range(Nf_min,Nf_max+1):
+        for Nf_val in range(Nf_min,Nf_max+1):
+            Ns_max = Nf_val - 2
+            for Ns_val in range(Ns_min, Ns_max+1):
+                this_name, this_config = fcdc_config(common=common, Nc=Nc_val, Nf=Nf_val, Ns=Ns_val)
+                setattr(config, this_name, this_config)
+    return config
+
+# 3-body functions
 def alpha_numeric(*, mrho, mpi, mq):
     # numerical computation of alpha = <E_pi>/<E_rho> from 3-body phase-space integrals
     import numpy as np
@@ -707,6 +721,8 @@ class svjHelper(baseHelper):
         if self.rinv is not None:
             if self.rinv<0 or self.rinv>1:
                 raise ValueError(f'rinv {self.rinv} not allowed (0 <= rinv <= 1)')
+        if self.Nc is not None and self.Nf is not None and self.Ns is not None:
+            self.rinvpred = round(fcdc_rinv(Nf = self.Nf, Ns = self.Ns),3)
 
         # set up production channel
         self.channelHelper = hvChannel(self.channel, self)
@@ -723,6 +739,7 @@ class svjHelper(baseHelper):
 
         # metadata tracking
         self.always_included = ["channel","mmed","Nc","Nf","scale","mq","mpi","mrho","pvector","spectrum","gq","gchi"]
+        self.maybe_included = ["rinv","rinvpred","Ns"]
         self.special_formats = {
             "channel": "{1}-{0}",
             "spectrum": "{}-{}",
@@ -734,26 +751,22 @@ class svjHelper(baseHelper):
 
     def name(self):
         params = [self._param_name(p) for p in self.always_included]
-        if self.rinv is not None:
-            params.append(self._param_name("rinv"))
-        if self.Ns is not None:
-            params.append(self._param_name("Ns"))
+        params.extend([self._param_name(p) for p in self.maybe_included if getattr(self,p,None) is not None])
         _name = '_'.join(params)
         return _name
 
     def metadata(self):
         metadict = {param:getattr(self,param) for param in self.always_included}
+        metadict.update({param:getattr(self,param) for param in self.maybe_included if getattr(self,param,None) is not None})
         metadict["stableIDs"] = self.stableIDs
         metadict["darkHadronIDs"] = self.darkHadronIDs
         metadict["darkHadronFinalIDs"] = self.darkHadronFinalIDs
         if self.rinv is not None:
-            metadict["rinv"] = self.rinv
             if self.mrho < 2*self.mpi:
                 metadict["rinv_3body"] = fcdc_rinv_3body_simp(rinv=self.rinv, Nf=self.Nf, mrho=self.mrho, mpi=self.mpi, pvector=self.pvector)
         if self.Ns is not None:
-            metadict["rinv"] = fcdc_rinv(Nf=self.Nf, Ns=self.Ns)
             if self.mrho < 2*self.mpi:
-                metadict["rinv_3body"] = fcdc_rinv_3body(Nf=self.Nf, Ns=self.Ns, mrho=self.mrho, mpi=self.mpi, pvector=self.pvector)
+                metadict["rinvpred_3body"] = fcdc_rinv_3body(Nf=self.Nf, Ns=self.Ns, mrho=self.mrho, mpi=self.mpi, pvector=self.pvector)
         return metadict
 
     def getPythiaSettings(self):

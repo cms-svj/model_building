@@ -8,6 +8,7 @@ from common import load_events
 from collections import defaultdict
 from itertools import chain
 from scipy.stats import sem
+import fastjet
 
 def ET(vec):
     return np.sqrt(vec.px**2+vec.py**2+vec.mass**2)
@@ -72,6 +73,24 @@ def getTau(events):
         events[f"Jet12_tau{i}"] = events["Jet12"].Tau_5[:,:,i-1]
         if i != 1: events[f"Jet12_tau{i}{i-1}"] = events[f"Jet12_tau{i}"] / events[f"Jet12_tau{i-1}"]
     return events
+
+def fj_cluster_sequence(jets):
+    # Re-cluster the constituents with Cambridge/Aachen.
+    # Using a very large R guarantees a single C/A jet containing all constituents
+    jet_def = fastjet.JetDefinition(fastjet.cambridge_algorithm, 1000.0)
+    cs = fastjet.ClusterSequence(jets.Constituents, jet_def)
+    return cs
+
+def getLundMultiplicity(cluster_seq, kt = 1):
+    # Retrieve the primary Lund-plane declusterings for the single jet and apply kt cut
+    lund = cluster_seq.exclusive_jets_lund_declusterings(njets=1)
+    kt_values = ak.flatten(lund)[:]["kt"]
+    mult = ak.sum(kt_values > kt, axis=-1)
+    return mult
+
+def getECF(cluster_seq, npointECF):
+    ecf = cluster_seq.exclusive_jets_energy_correlator(njets=1, npoint=npointECF, beta=1)
+    return ecf
 
 def calc_rinv(events, helper, meta_dict, debug):
     pid = events.GenParticle["PID"]
@@ -282,10 +301,22 @@ def histogram(filename, helper, with_constituents=True, debug=False):
     events["DeltaPhi_MET_Jet12"] = np.abs(events.MissingET.deltaphi(events["Jet12"]))
 
     # add substructure quantities
+    kt_cuts = [1,2,5,10]
+    n_ecf = [2,3]
     if with_constituents:
         events["Jet12_girth"] = calculate_girth(events["Jet12"])
         events["Jet12_ptD"] = calculate_ptD(events["Jet12"])
         events["Jet12_majoraxis"], events["Jet12_minoraxis"] = calc_axis1_axis2(events["Jet12"])
+
+        # maybe do this in a nicer way, looping is annoying
+        jet12_shape = ak.num(events['Jet12'],axis=1)
+        jet12_flat = ak.flatten(events['Jet12'],axis=1)
+        cs = fj_cluster_sequence(jet12_flat)
+        for k in kt_cuts: 
+            events[f"Jet12_lundMult{k}"] = ak.unflatten(getLundMultiplicity(cs, kt = k), jet12_shape)
+        for n in n_ecf:
+            events[f"Jet12_ECF{n}"] = ak.unflatten(getECF(cs, npointECF = n), jet12_shape)
+
     events["Jet12_sdmass"] = events["Jet12"].SoftDroppedJet.mass
     events["Jet12_sdpt"] = events["Jet12"].SoftDroppedJet.pt
 
@@ -308,7 +339,7 @@ def histogram(filename, helper, with_constituents=True, debug=False):
     events["mMediator"] = meds_final.mass
 
     # Add the invisible fraction to the events
-    print(f"Predicted rinv = {output['model'].get('rinv_3body',output['model'].get('rinv',-1)):.5}")
+    print(f"Predicted rinv = {output['model'].get('rinv_3body', output.get('rinvpred_3body', output['model'].get('rinv',output['model'].get('rinvpred', -1)))):.5}")
     calc_rinv(events, helper, meta_dict, debug)
 
     # dark hadron jets and corresponding visible and invisible+visible jets
@@ -457,6 +488,17 @@ def histogram(filename, helper, with_constituents=True, debug=False):
             fill_hist("DHIVJet12_rinv_shape",25,0,1,r"$r_{\text{inv}}^{\text{kin(alt)}}(J_{JETIND}^{\text{stable}})$"),
             fill_hist("DiDHIVJet_rinv_shape",25,0,1,r"$r_{\text{inv}}^{\text{kin(alt)}}(J^{\text{stable}}J^{\text{stable}})$"),
         ]))
+        for k in kt_cuts: 
+            label = f'Primary Lund Multiplicity $k_T$>{k} GeV$'
+            hist_dict.update(chain.from_iterable([
+                fill_hist(f'Jet12_lundMult{k}',12,0,12,label)
+            ]))    
+        for n in n_ecf:
+            label = f'$C_{n}^{{\\beta=1}}$'
+            hist_dict.update(chain.from_iterable([
+                fill_hist(f'Jet12_ECF{n}',30,0,0.3,label)
+            ]))
+
         dhj_labels = ["DH", "vis", "stable"]
         dhj_nmax = [24.5, 199.5, 199.5]
         dhj_nbin = [25, 50, 50]
