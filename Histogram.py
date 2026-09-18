@@ -505,6 +505,12 @@ def histogram(filename, helper, with_constituents=True, gen_only=False, debug=Fa
             print(f"Average dijet-level rinv ({suff}) =",
                 f"{meta_dict[f'DiDHIVJet_rinv_{suff}']['mean']:.5} ({meta_dict[f'DiDHIVJet_rinv_{suff}']['stdev']:.5})"
             )
+            # averaging jets
+            events[f"AvgDHIVJet_rinv_{suff}"] = ak.mean(events[f"DHIVJet12_rinv_{suff}"], axis=-1)
+            meta_dict[f"AvgDHIVJet_rinv_{suff}"] = fill_stats(events[f"AvgDHIVJet_rinv_{suff}"])
+            print(f"Average-over-jets jet-level rinv ({suff}) =",
+                f"{meta_dict[f'AvgDHIVJet_rinv_{suff}']['mean']:.5} ({meta_dict[f'AvgDHIVJet_rinv_{suff}']['stdev']:.5})"
+            )
             # global version, summing all events
             rinv_global = ak.sum(ak.flatten(numer, axis=1))/ak.sum(ak.flatten(denom, axis=1))
             meta_dict[f"DHIVJet12_rinv_{suff}_global"] = {"N": 1, "mean": rinv_global, "stdev": 0, "stderr": 0}
@@ -674,8 +680,10 @@ def histogram(filename, helper, with_constituents=True, gen_only=False, debug=Fa
         hist_dict.update(chain.from_iterable([
             fill_hist("DHIVJet12_rinv_proj",25,0,1,r"$r_{\text{inv}}^{\text{kin}}(J_{JETIND}^{\text{stable}})$"),
             fill_hist("DiDHIVJet_rinv_proj",25,0,1,r"$r_{\text{inv}}^{\text{kin}}(J^{\text{stable}}J^{\text{stable}})$"),
+            fill_hist("AvgDHIVJet_rinv_proj",25,0,1,r"$\langle r_{\text{inv}}^{\text{kin}}(J_{1,2}^{\text{stable}}) \rangle$"),
             fill_hist("DHIVJet12_rinv_shape",25,0,1,r"$r_{\text{inv}}^{\text{kin(alt)}}(J_{JETIND}^{\text{stable}})$"),
             fill_hist("DiDHIVJet_rinv_shape",25,0,1,r"$r_{\text{inv}}^{\text{kin(alt)}}(J^{\text{stable}}J^{\text{stable}})$"),
+            fill_hist("AvgDHIVJet_rinv_shape",25,0,1,r"$\langle r_{\text{inv}}^{\text{kin(alt)}}(J_{1,2}^{\text{stable}}) \rangle$"),
         ]))
 
         dhj_labels = ["DP", "DH", "vis", "stable"]
