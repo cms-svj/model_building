@@ -39,13 +39,13 @@ def calc_axis1_axis2(jet):
     weights_pt = jet_constpt**2
 
     # Calculate weighted sums for each event
-    sum_weight = ak.sum(weights_pt, axis=1)  # Sum of weights (pt^2) for each event
+    sum_weight = ak.sum(weights_pt, axis=-1)  # Sum of weights (pt^2) for each event
 
-    sum_deta = ak.sum(deta_particle * weights_pt, axis=1)
-    sum_dphi = ak.sum(dphi_particle * weights_pt, axis=1)
-    sum_deta2 = ak.sum(deta_particle**2 * weights_pt, axis=1)
-    sum_dphi2 = ak.sum(dphi_particle**2 * weights_pt, axis=1)
-    sum_detadphi = ak.sum(deta_particle * dphi_particle * weights_pt, axis=1)
+    sum_deta = ak.sum(deta_particle * weights_pt, axis=-1)
+    sum_dphi = ak.sum(dphi_particle * weights_pt, axis=-1)
+    sum_deta2 = ak.sum(deta_particle**2 * weights_pt, axis=-1)
+    sum_dphi2 = ak.sum(dphi_particle**2 * weights_pt, axis=-1)
+    sum_detadphi = ak.sum(deta_particle * dphi_particle * weights_pt, axis=-1)
 
     # Calculate averages
     ave_deta = sum_deta / sum_weight
