@@ -621,7 +621,7 @@ class hvChannel():
         # divide up Z' BF between the Nf quarks
         darkQuarks = self.helper.spectrumHelper.darkQuarks
         for i,dq in enumerate(darkQuarks):
-            if i==1: line = f'{self.mediatorID}:oneChannel = 1 {Bchi:3f} 102 {dq} -{dq}'
+            if i==0: line = f'{self.mediatorID}:oneChannel = 1 {Bchi:3f} 102 {dq} -{dq}'
             else: line = f'{self.mediatorID}:addChannel = 1 {Bchi:3f} 102 {dq} -{dq}'
             self.customLines.append(line)
 
