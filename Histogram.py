@@ -58,10 +58,10 @@ def calc_axis1_axis2(jet):
     b = ave_dphi2 - ave_dphi**2
     c = -(sum_detadphi / sum_weight - ave_deta * ave_dphi)
 
-    # Calculate the discriminant (delta) for each event
+    # Calculate the discriminant (delta) for each jet
     delta = np.sqrt(np.abs((a - b)**2 + 4 * c**2))
 
-    # Calculate axis1 (major) and axis2 (minor) for each event
+    # Calculate axis1 (major) and axis2 (minor) for each jet
     axis1 = np.sqrt(0.5 * (a + b + delta))
     axis2 = np.sqrt(0.5 * (a + b - delta))
 
@@ -84,7 +84,9 @@ def fj_cluster_sequence(jets):
 def getLundMultiplicity(cluster_seq, kt = 1):
     # Retrieve the primary Lund-plane declusterings for the single jet and apply kt cut
     lund = cluster_seq.exclusive_jets_lund_declusterings(njets=1)
-    kt_values = ak.flatten(lund)[:]["kt"]
+    # firsts, not flatten: both strip the njets=1 axis, but flatten drops padded
+    # None jets entirely, which breaks the unflatten back to (event, jet)
+    kt_values = ak.firsts(lund)["kt"]
     mult = ak.sum(kt_values > kt, axis=-1)
     return mult
 
