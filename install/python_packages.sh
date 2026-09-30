@@ -9,11 +9,16 @@ chmod +x lcg-venv
 
 cat << 'EOF' > mb_init.sh
 source ${MODEL_BUILDING}/install/python_packages/mbenv/bin/activate
+export LD_LIBRARY_PATH=${MODEL_BUILDING}/install/python_packages/mbenv/lib/python3.11/site-packages/fastjet/lib64:${LD_LIBRARY_PATH}
 EOF
 
 source mb_init.sh
 
+# vector 1.9.0 validates that a record has only one 4th coordinate, but the
+# coffea Delphes Particle mixin carries both E and Mass, so every particle
+# collection fails to load. coffea only pins vector>=1.4.1, so pin it here.
 PKGS_UPGRADE=(
+vector==1.8.1 \
 coffea==2025.12.0 \
 mplhep \
 )

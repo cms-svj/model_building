@@ -161,9 +161,11 @@ if __name__=="__main__":
         'alpha_3body',
         'kappa',
         'DHIVJet12_rinv_proj',
+        'AvgDHIVJet_rinv_proj',
         'DiDHIVJet_rinv_proj',
         'DHIVJet12_rinv_proj_global',
         'DHIVJet12_rinv_shape',
+        'AvgDHIVJet_rinv_shape',
         'DiDHIVJet_rinv_shape',
         'DHIVJet12_rinv_shape_global',
     ]

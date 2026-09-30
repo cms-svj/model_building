@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ -z "PYTHIA8MINOR" ]; then
+if [ -z "$PYTHIA8MINOR" ]; then
 	export PYTHIA8MINOR=10
 fi
 
@@ -27,11 +27,11 @@ make install
 make ${PYTHIA_EXE}
 )
 
-cat << 'EOF' > mb_init.sh
-export PYTHIA8=${MODEL_BUILDING}/install/pythia8
-export PATH=${PYTHIA8}/bin/:${PATH}
-export LD_LIBRARY_PATH=${PYTHIA8}/lib/:${LD_LIBRARY_PATH}
-export PYTHIA8DATA=$(pythia8-config --xmldoc)
+cat << EOF > mb_init.sh
+export PYTHIA8=\${MODEL_BUILDING}/install/pythia8
+export PATH=\${PYTHIA8}/bin/:\${PATH}
+export LD_LIBRARY_PATH=\${PYTHIA8}/lib/:\${LD_LIBRARY_PATH}
+export PYTHIA8DATA=\$(pythia8-config --xmldoc)
 export PYTHIA8MINOR=${PYTHIA8MINOR}
-export PYTHIA8RUNNER=${PYTHIA8}/examples/${PYTHIA_EXE}
+export PYTHIA8RUNNER=\${PYTHIA8}/examples/${PYTHIA_EXE}
 EOF

@@ -15,7 +15,7 @@ def run_objs(config_name, args, suffix, outdir, nproc, dryrun):
     for obj in objs:
         logName = f'model_{obj}'
         if suffix: logName += f'_{suffix}'
-        cmd = f'./run_model helper -C {config_name} -O config.{obj} --dir {outdir} {args} > {outdir}/{logName}.log'
+        cmd = f'./run_model helper -C {config_name} -O config.{obj} --dir {outdir} {args} > {outdir}/{logName}.log 2>&1'
         cmds.append(cmd)
 
     for (obj,cmd) in zip(objs,cmds):
@@ -29,7 +29,7 @@ def run_objs(config_name, args, suffix, outdir, nproc, dryrun):
     if not dryrun and nproc>1:
         with Pool(nproc) as pool:
             exit_codes = pool.map(os.system, cmds)
-        print(f"Exit codes: {exit_codes}")
+        print('\n'.join(f'{i}: {j}' for i,j in zip(objs,exit_codes)))
 
 if __name__=="__main__":
     parser = ArgumentParser(

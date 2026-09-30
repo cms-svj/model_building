@@ -39,13 +39,13 @@ def calc_axis1_axis2(jet):
     weights_pt = jet_constpt**2
 
     # Calculate weighted sums for each event
-    sum_weight = ak.sum(weights_pt, axis=1)  # Sum of weights (pt^2) for each event
+    sum_weight = ak.sum(weights_pt, axis=-1)  # Sum of weights (pt^2) for each event
 
-    sum_deta = ak.sum(deta_particle * weights_pt, axis=1)
-    sum_dphi = ak.sum(dphi_particle * weights_pt, axis=1)
-    sum_deta2 = ak.sum(deta_particle**2 * weights_pt, axis=1)
-    sum_dphi2 = ak.sum(dphi_particle**2 * weights_pt, axis=1)
-    sum_detadphi = ak.sum(deta_particle * dphi_particle * weights_pt, axis=1)
+    sum_deta = ak.sum(deta_particle * weights_pt, axis=-1)
+    sum_dphi = ak.sum(dphi_particle * weights_pt, axis=-1)
+    sum_deta2 = ak.sum(deta_particle**2 * weights_pt, axis=-1)
+    sum_dphi2 = ak.sum(dphi_particle**2 * weights_pt, axis=-1)
+    sum_detadphi = ak.sum(deta_particle * dphi_particle * weights_pt, axis=-1)
 
     # Calculate averages
     ave_deta = sum_deta / sum_weight
@@ -58,10 +58,10 @@ def calc_axis1_axis2(jet):
     b = ave_dphi2 - ave_dphi**2
     c = -(sum_detadphi / sum_weight - ave_deta * ave_dphi)
 
-    # Calculate the discriminant (delta) for each event
+    # Calculate the discriminant (delta) for each jet
     delta = np.sqrt(np.abs((a - b)**2 + 4 * c**2))
 
-    # Calculate axis1 (major) and axis2 (minor) for each event
+    # Calculate axis1 (major) and axis2 (minor) for each jet
     axis1 = np.sqrt(0.5 * (a + b + delta))
     axis2 = np.sqrt(0.5 * (a + b - delta))
 
@@ -84,7 +84,9 @@ def fj_cluster_sequence(jets):
 def getLundMultiplicity(cluster_seq, kt = 1):
     # Retrieve the primary Lund-plane declusterings for the single jet and apply kt cut
     lund = cluster_seq.exclusive_jets_lund_declusterings(njets=1)
-    kt_values = ak.flatten(lund)[:]["kt"]
+    # firsts, not flatten: both strip the njets=1 axis, but flatten drops padded
+    # None jets entirely, which breaks the unflatten back to (event, jet)
+    kt_values = ak.firsts(lund)["kt"]
     mult = ak.sum(kt_values > kt, axis=-1)
     return mult
 
@@ -505,6 +507,12 @@ def histogram(filename, helper, with_constituents=True, gen_only=False, debug=Fa
             print(f"Average dijet-level rinv ({suff}) =",
                 f"{meta_dict[f'DiDHIVJet_rinv_{suff}']['mean']:.5} ({meta_dict[f'DiDHIVJet_rinv_{suff}']['stdev']:.5})"
             )
+            # averaging jets
+            events[f"AvgDHIVJet_rinv_{suff}"] = ak.mean(events[f"DHIVJet12_rinv_{suff}"], axis=-1)
+            meta_dict[f"AvgDHIVJet_rinv_{suff}"] = fill_stats(events[f"AvgDHIVJet_rinv_{suff}"])
+            print(f"Average-over-jets jet-level rinv ({suff}) =",
+                f"{meta_dict[f'AvgDHIVJet_rinv_{suff}']['mean']:.5} ({meta_dict[f'AvgDHIVJet_rinv_{suff}']['stdev']:.5})"
+            )
             # global version, summing all events
             rinv_global = ak.sum(ak.flatten(numer, axis=1))/ak.sum(ak.flatten(denom, axis=1))
             meta_dict[f"DHIVJet12_rinv_{suff}_global"] = {"N": 1, "mean": rinv_global, "stdev": 0, "stderr": 0}
@@ -674,8 +682,10 @@ def histogram(filename, helper, with_constituents=True, gen_only=False, debug=Fa
         hist_dict.update(chain.from_iterable([
             fill_hist("DHIVJet12_rinv_proj",25,0,1,r"$r_{\text{inv}}^{\text{kin}}(J_{JETIND}^{\text{stable}})$"),
             fill_hist("DiDHIVJet_rinv_proj",25,0,1,r"$r_{\text{inv}}^{\text{kin}}(J^{\text{stable}}J^{\text{stable}})$"),
+            fill_hist("AvgDHIVJet_rinv_proj",25,0,1,r"$\langle r_{\text{inv}}^{\text{kin}}(J_{1,2}^{\text{stable}}) \rangle$"),
             fill_hist("DHIVJet12_rinv_shape",25,0,1,r"$r_{\text{inv}}^{\text{kin(alt)}}(J_{JETIND}^{\text{stable}})$"),
             fill_hist("DiDHIVJet_rinv_shape",25,0,1,r"$r_{\text{inv}}^{\text{kin(alt)}}(J^{\text{stable}}J^{\text{stable}})$"),
+            fill_hist("AvgDHIVJet_rinv_shape",25,0,1,r"$\langle r_{\text{inv}}^{\text{kin(alt)}}(J_{1,2}^{\text{stable}}) \rangle$"),
         ]))
 
         dhj_labels = ["DP", "DH", "vis", "stable"]
