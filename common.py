@@ -242,10 +242,18 @@ def resolve_models(pattern):
     for name in matched_names:
         remote_dir = f"{directory}/{name}"
         local_dir = f"{local_base}/{name}"
-        source = f"{EOS_REDIRECTOR}{remote_dir}/Hists.pkl"
-        dest = os.path.abspath(f"{local_dir}/Hists.pkl")
-        copy_process.add_job(source, dest, mkdir=True, force=True)
-        local_dirs.append(local_dir)
+        status, model_listing = fs.dirlist(remote_dir)
+        if not status.ok:
+            print(f"Couldn't read {remote_dir} on EOS, skipping: {status.message}")
+            continue
+        pkl_names = [entry.name for entry in model_listing.dirlist if entry.name.endswith(".pkl")]
+        if not pkl_names:
+            print(f"{remote_dir} doesn't have any .pkl files")
+        for fname in pkl_names:
+            source = f"{EOS_REDIRECTOR}{remote_dir}/{fname}"
+            dest = os.path.abspath(f"{local_dir}/{fname}")
+            copy_process.add_job(source, dest, mkdir=True, force=True)
+            local_dirs.append(local_dir)
     copy_process.prepare()
     _, results = copy_process.run()
 
