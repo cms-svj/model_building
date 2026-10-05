@@ -1,4 +1,4 @@
-import os, sys, imp
+import os, sys, imp, re
 from magiconfig import ArgumentParser, ArgumentDefaultsRawHelpFormatter
 from multiprocessing import Pool
 
@@ -6,10 +6,25 @@ config_dir = os.path.join(os.getcwd(), "configs")
 if config_dir not in sys.path:
     sys.path.append(config_dir)
 
-def run_objs(config_name, args, suffix, outdir, nproc, dryrun):
+def model_done(obj, outdir):
+    # match config name (e.g. Nc7Nf7Ns1, rinv0p250) to model dir name parts (e.g. ..._Nc-7_Nf-7_..._Ns-1, ..._rinv-0.25)
+    # simp config names round rinv to 3 decimals, so compare values at that precision
+    parts = {key: float(val.replace('p','.')) for key,val in re.findall(r'([A-Za-z]+)([\dp]+)', obj)}
+    def matches_dir(d):
+        dparts = dict(p.split('-',1) for p in d.split('_') if '-' in p)
+        return all(key in dparts and round(float(dparts[key]),3)==val for key,val in parts.items())
+    matches = [d for d in os.listdir(outdir) if matches_dir(d)]
+    return len(matches)==1 and os.path.exists(os.path.join(outdir, matches[0], "Hists.pkl"))
+
+def run_objs(config_name, args, suffix, outdir, nproc, dryrun, force):
     os.makedirs(outdir, exist_ok=True)
     configs_fcdc = imp.load_source("configs_fcdc", config_name)
-    objs = [obj for obj in vars(configs_fcdc.config)]
+    objs = []
+    for obj in vars(configs_fcdc.config):
+        if not force and model_done(obj, outdir):
+            print(f'skipping {obj}: Hists.pkl already exists (use --force to rerun)')
+        else:
+            objs.append(obj)
 
     cmds = []
     for obj in objs:
@@ -41,5 +56,6 @@ if __name__=="__main__":
     parser.add_argument("--outdir", type=str, default="models/fcdc/", help="outdir for logfile and events")
     parser.add_argument("--nproc", type=int, default=1, help="run in parallel (if > 1)")
     parser.add_argument("--dryrun", default=False, action="store_true", help="print commands but don't run")
+    parser.add_argument("-f", "--force", default=False, action="store_true", help="rerun models even if output (Hists.pkl) already exists")
     args = parser.parse_args()
-    run_objs(args.config_name, args.args, args.suffix, args.outdir, args.nproc, args.dryrun)
+    run_objs(args.config_name, args.args, args.suffix, args.outdir, args.nproc, args.dryrun, args.force)
