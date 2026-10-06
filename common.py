@@ -1,4 +1,5 @@
 import os
+import sys
 from coffea.nanoevents import DelphesSchema
 import numpy as np
 import numba as nb
@@ -12,6 +13,11 @@ import shutil
 from glob import glob
 from XRootD import client as xrootd_client
 import pickle
+
+def config_path():
+    config_dir = os.path.join(os.getcwd(), "configs")
+    sys.path.append(config_dir)
+    sys.path.extend([path for path in os.listdir(config_dir) if os.path.isdir(path)])
 
 DelphesSchema.mixins.update({
     "ParticleFlowCandidate": "Particle",

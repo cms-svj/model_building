@@ -7,10 +7,9 @@ from copy import deepcopy
 from magiconfig import ArgumentParser, MagiConfig, MagiConfigOptions, ArgumentDefaultsRawHelpFormatter
 from svjHelper import svjHelper, extHelper
 import Histogram
+from common import config_path
 
-config_dir = os.path.join(os.getcwd(), "configs")
-sys.path.append(config_dir)
-sys.path.extend([path for path in os.listdir(config_dir) if os.path.isdir(path)])
+config_path()
 
 def separate_args(args,groups):
     separated = {group.title : MagiConfig(**{a.dest:getattr(args,a.dest,None) for a in group._group_actions}) for group in groups}
