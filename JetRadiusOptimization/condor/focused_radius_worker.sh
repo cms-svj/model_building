@@ -28,7 +28,8 @@ for required in \
     "${WORK_REPOSITORY}/init.sh" \
     "${WORK_REPOSITORY}/common.py" \
     "${JOB_SCRATCH}/focused_diagnostics.py" \
-    "${JOB_SCRATCH}/core.py"; do
+    "${JOB_SCRATCH}/core.py" \
+    "${JOB_SCRATCH}/ancestry.py"; do
     if [[ ! -e "${required}" ]]; then
         echo "[ERROR] Missing transferred input: ${required}" >&2
         exit 10
@@ -39,6 +40,7 @@ mkdir -p "${WORK_REPOSITORY}/JetRadiusOptimization" "${LOCAL_OUTPUT}"
 cp "${JOB_SCRATCH}/focused_diagnostics.py" \
     "${WORK_REPOSITORY}/JetRadiusOptimization/focused_diagnostics.py"
 cp "${JOB_SCRATCH}/core.py" "${WORK_REPOSITORY}/JetRadiusOptimization/core.py"
+cp "${JOB_SCRATCH}/ancestry.py" "${WORK_REPOSITORY}/JetRadiusOptimization/ancestry.py"
 
 cd "${WORK_REPOSITORY}"
 set +u

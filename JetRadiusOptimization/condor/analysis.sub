@@ -25,7 +25,7 @@ Arguments = analysis_worker.sh $(INPUT_URL) $(EOS_OUT) $(MAX_EVENTS)
 
 Should_Transfer_Files = YES
 WhenToTransferOutput = ON_EXIT
-Transfer_Input_Files = $(JRO)/condor/analysis_worker.sh, $(JRO)/condor/model_building_transfer, $(JRO)/validate.py, $(JRO)/core.py
+Transfer_Input_Files = $(JRO)/condor/analysis_worker.sh, $(JRO)/condor/model_building_transfer, $(JRO)/validate.py, $(JRO)/core.py, $(JRO)/ancestry.py
 Transfer_Output_Files = ""
 
 Output = $(JRO)/condor/logs/$(Cluster)_$(Process).out

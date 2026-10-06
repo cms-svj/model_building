@@ -6,8 +6,8 @@ from EOS, runs the full R=0.2--1.6 scan, and copies plots and the validation JSO
 back to EOS. It transfers a plain runtime directory and does not use a tarball.
 
 Submit from the repository root. The first command builds
-`condor/model_building_transfer/` (`init.sh`, `common.py` and the installed
-python venv), which every worker receives. Rerun it whenever those change.
+`condor/model_building_transfer/` (`init.sh`, `common.py`, `cards/` and the
+installed python venv), which every worker receives. Rerun it whenever those change.
 
 ```bash
 source init.sh

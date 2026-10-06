@@ -113,6 +113,13 @@ def main() -> int:
                 f"missing: {', '.join(missing)} -- pip install them" if missing
                 else "all imports present"):
         return 1
+    import pyarrow
+    if not step("pyarrow >= 17", int(pyarrow.__version__.split(".")[0]) >= 17,
+                f"found {pyarrow.__version__}" +
+                ("" if int(pyarrow.__version__.split(".")[0]) >= 17 else
+                 '; awkward\'s Parquet I/O needs >= 17 -- '
+                 'python3 -m pip install "pyarrow==25.0.1"')):
+        return 1
 
     try:
         import core

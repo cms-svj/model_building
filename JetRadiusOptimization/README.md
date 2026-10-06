@@ -33,11 +33,13 @@ git clone git@github.com:cms-svj/model_building
 cd model_building
 ./install.sh          # once: Pythia, Delphes, and the python venv
 source init.sh        # every new shell
+python3 -m pip install "pyarrow==25.0.1"   # once, into the venv (see below)
 ```
 
-`init.sh` gives you LCG_106 (which already includes pyarrow, scipy and
-vector) plus `coffea`, `fastjet` and `magiconfig` from
-`install/python_packages.sh`. Nothing else is needed.
+`init.sh` gives you LCG_106 plus `coffea`, `fastjet` and `magiconfig` from
+`install/python_packages.sh`. The Parquet stages also need pyarrow >= 17:
+the awkward version that coffea pulls in refuses LCG_106's pyarrow 15 in
+`ak.to_parquet`. 25.0.1 is the version this code was tested with.
 
 ## Quickstart: generate a sample and commission
 
@@ -383,8 +385,9 @@ branches and exits nonzero.
 **`validation_report.json` says `failed`.** Read `gates`. Do not use the radius
 results from that run.
 
-**`ImportError: pyarrow`.** pyarrow ships with LCG_106. This error means
-`source init.sh` was not run in this shell.
+**`ImportError: pyarrow 17.0.0 or later required`.** LCG_106's pyarrow 15 is
+too old for awkward's Parquet I/O. Run `source init.sh`, then
+`python3 -m pip install "pyarrow==25.0.1"`.
 
 **`ancestry bitmask did not reach a fixed point`.** The mother graph has an
 unexpected structure. Inspect the event rather than raising `max_passes` — the

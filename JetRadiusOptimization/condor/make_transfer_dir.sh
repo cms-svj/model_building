@@ -1,7 +1,8 @@
 #!/bin/bash
 # Build the runtime snapshot that analysis.sub and focused_by_radius.sub ship to
-# each worker as model_building_transfer/: init.sh, common.py and the installed
-# python_packages venv (fastjet, magiconfig, coffea overlay on LCG).
+# each worker as model_building_transfer/: init.sh, common.py, cards/ (validate.py
+# checks the Delphes card) and the installed python_packages venv (fastjet,
+# magiconfig, coffea overlay on LCG).
 #
 # Run once after ./install.sh, and again whenever init.sh, common.py or the
 # venv changes:
@@ -20,5 +21,9 @@ fi
 rm -rf "${DEST}"
 mkdir -p "${DEST}/install"
 cp "${REPO}/init.sh" "${REPO}/common.py" "${DEST}/"
+cp -r "${REPO}/cards" "${DEST}/"
 cp -a "${REPO}/install/python_packages" "${DEST}/install/"
+# HTCondor cannot transfer symlinks to directories (e.g. the venv's lib64 -> lib).
+# They are aliases only; workers reach site-packages through lib/.
+find "${DEST}" -type l -xtype d -delete
 echo "[DONE] ${DEST} ($(du -sh "${DEST}" | cut -f1))"

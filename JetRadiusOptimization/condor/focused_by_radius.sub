@@ -16,7 +16,7 @@ Arguments = focused_radius_worker.sh $(INPUT_URL) $(EOS_JOBS) $(radius) $(radius
 
 Should_Transfer_Files = YES
 WhenToTransferOutput = ON_EXIT
-Transfer_Input_Files = $(JRO)/condor/focused_radius_worker.sh, $(JRO)/condor/model_building_transfer, $(JRO)/focused_diagnostics.py, $(JRO)/core.py
+Transfer_Input_Files = $(JRO)/condor/focused_radius_worker.sh, $(JRO)/condor/model_building_transfer, $(JRO)/focused_diagnostics.py, $(JRO)/core.py, $(JRO)/ancestry.py
 Transfer_Output_Files = ""
 
 Output = $(JRO)/condor/logs/focused_$(Cluster)_$(Process)_R$(radius).out
