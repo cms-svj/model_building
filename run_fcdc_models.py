@@ -16,11 +16,11 @@ def model_done(obj, outdir):
     matches = [d for d in os.listdir(outdir) if matches_dir(d)]
     return len(matches)==1 and os.path.exists(os.path.join(outdir, matches[0], "Hists.pkl"))
 
-def run_objs(config_name, args, suffix, outdir, nproc, dryrun, force):
+def run_objs(config_name, top_obj, args, suffix, outdir, nproc, dryrun, force):
     os.makedirs(outdir, exist_ok=True)
     configs_fcdc = imp.load_source("configs_fcdc", config_name)
     objs = []
-    for obj in vars(configs_fcdc.config):
+    for obj in vars(getattr(configs_fcdc, top_obj)):
         if not force and model_done(obj, outdir):
             print(f'skipping {obj}: Hists.pkl already exists (use --force to rerun)')
         else:
@@ -30,7 +30,7 @@ def run_objs(config_name, args, suffix, outdir, nproc, dryrun, force):
     for obj in objs:
         logName = f'model_{obj}'
         if suffix: logName += f'_{suffix}'
-        cmd = f'./run_model helper -C {config_name} -O config.{obj} --dir {outdir} {args} > {outdir}/{logName}.log 2>&1'
+        cmd = f'./run_model helper -C {config_name} -O {top_obj}.{obj} --dir {outdir} {args} > {outdir}/{logName}.log 2>&1'
         cmds.append(cmd)
 
     for (obj,cmd) in zip(objs,cmds):
@@ -51,11 +51,12 @@ if __name__=="__main__":
         formatter_class=ArgumentDefaultsRawHelpFormatter
     )
     parser.add_argument("--config-name", type=str, default="configs/model_fcdc_10.py", help="config file containing multiple models")
+    parser.add_argument("--obj", type=str, default="config", help="name of top-level config object")
     parser.add_argument("--args", type=str, default="--steps all --events 1000 --verbose", help="arguments to pass to run_model")
     parser.add_argument("--suffix", type=str, default="", help="suffix for log file names")
-    parser.add_argument("--outdir", type=str, default="models/fcdc/", help="outdir for logfile and events")
+    parser.add_argument("--outdir", type=str, default="models/fcdc", help="outdir for logfile and events")
     parser.add_argument("--nproc", type=int, default=1, help="run in parallel (if > 1)")
     parser.add_argument("--dryrun", default=False, action="store_true", help="print commands but don't run")
     parser.add_argument("-f", "--force", default=False, action="store_true", help="rerun models even if output (Hists.pkl) already exists")
     args = parser.parse_args()
-    run_objs(args.config_name, args.args, args.suffix, args.outdir, args.nproc, args.dryrun, args.force)
+    run_objs(args.config_name, args.obj, args.args, args.suffix, args.outdir, args.nproc, args.dryrun, args.force)
