@@ -1,0 +1,24 @@
+# Inputs and outputs: regenerate them, never commit them.
+*.root
+*.parquet
+*.npz
+*.meta.json
+validation_sample/
+cms_10k_radius_study/
+dragon_mass_scan/
+rinv_scan/
+dragon_style_test/
+radius_diagnostics*/
+radius_validation*/
+
+# Condor runtime products
+condor/logs/
+condor/model_building_transfer/
+condor/payload.tgz
+condor/points.txt
+condor/jobs.txt
+
+__pycache__/
+
+# commission.py --workdir output
+commission_out/

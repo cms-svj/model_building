@@ -1,0 +1,42 @@
+# One 10,000-event CMS jet-radius analysis job.
+#
+# Submit from the repository root:
+#     JetRadiusOptimization/condor/make_transfer_dir.sh
+#     mkdir -p JetRadiusOptimization/condor/logs
+#     condor_submit JetRadiusOptimization/condor/analysis.sub
+#
+# Override the input or output with -append, e.g.
+#     condor_submit -append 'INPUT_URL = root://cmseos.fnal.gov//store/user/...' \
+#                   -append 'EOS_OUT = /store/user/...' \
+#                   JetRadiusOptimization/condor/analysis.sub
+universe = vanilla
++DesiredOS = "EL9"
++JobFlavour = "workday"
++JobBatchName = "cms_10k_radius_analysis"
+
+SHARD      = /store/user/$ENV(USER)/DarkSectorStudies/MC/cms_10k_radius_study/point-00000_mdark-20_shard-00
+INPUT_URL  = root://cmseos.fnal.gov/$(SHARD)/events.root
+EOS_OUT    = /store/user/$ENV(USER)/DarkSectorStudies/Analysis/cms_10k_radius_study/point-00000_mdark-20_shard-00/jet_radius_validation
+MAX_EVENTS = 10000
+JRO        = JetRadiusOptimization
+
+Executable = /bin/bash
+Arguments = analysis_worker.sh $(INPUT_URL) $(EOS_OUT) $(MAX_EVENTS)
+
+Should_Transfer_Files = YES
+WhenToTransferOutput = ON_EXIT
+Transfer_Input_Files = $(JRO)/condor/analysis_worker.sh, $(JRO)/condor/model_building_transfer, $(JRO)/validate.py, $(JRO)/core.py
+Transfer_Output_Files = ""
+
+Output = $(JRO)/condor/logs/$(Cluster)_$(Process).out
+Error  = $(JRO)/condor/logs/$(Cluster)_$(Process).err
+Log    = $(JRO)/condor/logs/$(Cluster)_$(Process).log
+
+request_cpus   = 1
+request_memory = 16000 MB
+request_disk   = 10000 MB
+
+notification = Never
+on_exit_hold = (ExitBySignal == True) || (ExitCode != 0)
+
+Queue 1
