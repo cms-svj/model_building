@@ -351,11 +351,15 @@ def calc_rinv(events, helper, meta_dict, debug):
 
 def calc_mt(jet, met):
     # transverse mass calculation
+    # build the MET vector from MET and Phi; do not use met.px/met.py:
+    # coffea's Delphes schema (since 2025.12.0) sets rho = MET*cosh(Eta) and vector reads rho as pt,
+    # so met.pt/px/py are inflated by cosh(Eta) (Delphes MissingET.Eta has no physical meaning)
     E1 = ET(jet)
     E2 = met.MET
-    MTsq = (E1+E2)**2-(jet.px+met.px)**2-(jet.py+met.py)**2
+    MTsq = (E1+E2)**2-(jet.px+E2*np.cos(met.Phi))**2-(jet.py+E2*np.sin(met.Phi))**2
     MTsq = MTsq.to_numpy(allow_missing=True)
-    return np.sqrt(MTsq, where=MTsq>=0)
+    # clip instead of np.sqrt(MTsq, where=MTsq>=0): without out=, the skipped entries are left uninitialized (garbage values)
+    return np.sqrt(np.clip(MTsq, 0, None))
 
 def proj(events, a, b):
     if not isinstance(a, list): a = [a]
