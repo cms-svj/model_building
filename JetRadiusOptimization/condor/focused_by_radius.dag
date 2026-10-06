@@ -1,0 +1,5 @@
+# Submit from the repository root:
+#     condor_submit_dag JetRadiusOptimization/condor/focused_by_radius.dag
+JOB RADII JetRadiusOptimization/condor/focused_by_radius.sub
+JOB MERGE JetRadiusOptimization/condor/focused_merge.sub
+PARENT RADII CHILD MERGE
