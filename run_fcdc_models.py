@@ -1,5 +1,5 @@
 import os, sys, imp, re
-from magiconfig import ArgumentParser, ArgumentDefaultsRawHelpFormatter
+from magiconfig import ArgumentParser, ArgumentDefaultsRawHelpFormatter, _rgetattr
 from multiprocessing import Pool
 
 config_dir = os.path.join(os.getcwd(), "configs")
@@ -20,7 +20,7 @@ def run_objs(config_name, top_obj, args, suffix, outdir, nproc, dryrun, force):
     os.makedirs(outdir, exist_ok=True)
     configs_fcdc = imp.load_source("configs_fcdc", config_name)
     objs = []
-    for obj in vars(getattr(configs_fcdc, top_obj)):
+    for obj in vars(_rgetattr(configs_fcdc, top_obj)):
         if not force and model_done(obj, outdir):
             print(f'skipping {obj}: Hists.pkl already exists (use --force to rerun)')
         else:
