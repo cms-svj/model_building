@@ -15,6 +15,8 @@ for mpi in [3.1, 5.0, 10.0, 20.0]:
         setattr(config,name,cfg)
 
         common2.spectrum = 'fcdcSimp'
-        cfg2 = fcdc_configs_NcNf1(common=common2)
+        common2.Nc = 3
+        common2.Nf = 3
+        cfg2 = fcdc_configs_NcNf1(common=common2, simp=True)
         name2 = name.replace('comp','simp')
         setattr(config,name2,cfg2)
