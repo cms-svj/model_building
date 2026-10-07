@@ -36,12 +36,19 @@ def pythia_handlers():
     arg_string = '{pythia_exe} {pythia_fname} {hepmc_fname}'
     if pythia_version >= 13:
         arg_string = '{pythia_exe} -c {pythia_fname} -o {hepmc_fname}'
-    card_formatter = lambda line: line
+    replacements = []
+    if pythia_version < 9:
+        replacements.extend([
+            ("HiddenValley:setLambda = on", "")
+        ])
     if pythia_version >= 13:
         replacements = [
             ("ParticleDecays:allowPhotonRadiation = on", "HadronLevel:QED = on")
         ]
+    if len(replacements)>0:
         card_formatter = lambda line: pysed(line, replacements)
+    else:
+        card_formatter = lambda line: line
     return {"arg_string": arg_string, "card_formatter": card_formatter}
 
 if __name__=="__main__":
