@@ -1,8 +1,6 @@
 #!/bin/bash
-# stop on failure: otherwise a failed clone silently falls back to the stock LCG Delphes
-set -e
 
-git clone https://github.com/cms-svj/delphes -b DarkHadronJets
+git clone ${ACCESS_GITHUB}cms-svj/delphes -b DarkHadronJets
 cd delphes
 
 make -j 8

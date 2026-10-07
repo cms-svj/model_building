@@ -8,10 +8,12 @@ cd model_building
 ./install.sh
 ```
 
-The default version of Pythia is currently 8.310.
-To install a different version of Pythia, specify the desired minor version, e.g.:
-```bash
-./install.sh -p 17
+The `install.sh` script has a few options:
+```
+Options:
+-p [version]        Pythia8.3 minor version to install (default = 10)
+-c [protocol]       use protocol to clone (default = ssh, alternative = https)
+-h                  print this message and exit
 ```
 
 ## Environment

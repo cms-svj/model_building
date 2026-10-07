@@ -1,9 +1,5 @@
 #!/bin/bash
 
-if [ -z "$PYTHIA8MINOR" ]; then
-	export PYTHIA8MINOR=10
-fi
-
 PYTHIA_VERSION=pythia83${PYTHIA8MINOR}
 PYTHIA_EXE=main42
 if [ "$PYTHIA8MINOR" -ge 12 ]; then
