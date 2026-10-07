@@ -1,0 +1,386 @@
+[FERMIHTC-APPTAINER]: INFO -- ApptainerImage classAd detected
+[FERMIHTC-APPTAINER]: INFO -- Attempting to run job in /cvmfs/singularity.opensciencegrid.org/opensciencegrid/osgvo-el9:latest
+[FERMIHTC-APPTAINER]: INFO -- Running /cvmfs/oasis.opensciencegrid.org/mis/apptainer/current/bin/apptainer exec --pid --ipc --contain --bind /cvmfs --bind /etc/hosts --bind /etc/grid-security --home /storage/local/data1/condor/execute/dir_1317882:/srv --pwd /srv /cvmfs/singularity.opensciencegrid.org/opensciencegrid/osgvo-el9:latest ./run_job.sh j3086704.1 master_cms 20 100001 0.5
+===== NODE INFO =====
+Mon Jun  8 20:37:54 UTC 2026
+ovazquez-3086704-1-cmswn2220.fnal.gov
+PWD: /srv
+ARGS: JOBTAG=j3086704.1 MODEL=master_cms NEV=20 SEED=100001 RINV=0.5
+ENV : PROJECT=model_building
+=====================
+[stage-in] fetch code bundle ...
+[untar] expanding ...
+[debug] repo tree (top level)
+Histogram.py
+Metaplot.py
+Plots.py
+README.md
+add_new_DS_observables.ipynb
+add_new_DS_observables.py
+automating_jobs.jdl
+cards
+common.py
+configs
+docker_stderror
+eos_commands.txt
+example_MT.ipynb
+init.sh
+install
+install.sh
+merge_trees.C
+model_building_bundle.tgz
+pack.sh
+run_fcdc_models.py
+run_job.sh
+run_model
+svjHelper.py
+tmux_commands.txt
+[debug] configs available:
+__pycache__
+master_cms.py
+master_config.py
+model_cms.py
+model_cms_snowmasslike.py
+model_fcdc_10.py
+model_fcdc_10_3body.py
+model_fcdc_base.py
+model_fcdc_mpi10.py
+model_fcdc_mpi10_3body.py
+model_fcdc_mpi6.py
+model_fcdc_mpi6_3body.py
+model_snowmass_10.py
+model_snowmass_5.py
+model_snowmass_50.py
+model_snowmass_base.py
+model_snowmass_cmslike.py
+model_snowmass_cmslike2.py
+model_snowmass_fcdclike.py
+model_snowmass_fcdclike_3body.py
+model_snowmass_fcdclike_mpi10.py
+model_snowmass_fcdclike_mpi10_3body.py
+model_snowmass_fcdclike_mpi6.py
+model_snowmass_fcdclike_mpi6_3body.py
+pythia8
+Running PYTHIA configuration script. Now is Mon Jun 8 20:38:06 UTC 2026
+---------------------------------------------------------------------
+|                    PYTHIA Configuration Summary                   |
+---------------------------------------------------------------------
+  Architecture                = LINUX
+  C++ compiler     CXX        = /cvmfs/sft.cern.ch/lcg/releases/gcc/13.1.0-b3d18/x86_64-el9/bin/g++
+  C++ flags        CXX_COMMON = -O2 -std=c++11 -pedantic -W -Wall -Wshadow -fPIC -pthread -DGZIP
+  C++ shared flag  CXX_SHARED = -shared
+  Further options             = 
+
+The following optional external packages will be used:
++ HEPMC2 (-I/cvmfs/sft.cern.ch/lcg/releases/HepMC/2.06.11-d5a39/x86_64-el9-gcc13-opt/include)
++ LHAPDF6 (-I/cvmfs/sft.cern.ch/lcg/releases/MCGenerators/lhapdf/6.5.3-f90f6/x86_64-el9-gcc13-opt/include)
++ GZIP (system)
++ PYTHON (-I/cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/include/python3.11 -I/cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/include/python3.11)
+make: 'main42' is up to date.
+python_packages
+Requirement already satisfied: coffea==2025.12.0 in ./.local/lib/python3.11/site-packages (2025.12.0)
+Requirement already satisfied: aiohttp in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from coffea==2025.12.0) (3.8.4)
+Requirement already satisfied: awkward>=2.8.9 in ./.local/lib/python3.11/site-packages (from coffea==2025.12.0) (2.9.0)
+Requirement already satisfied: cachetools in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from coffea==2025.12.0) (5.3.1)
+Requirement already satisfied: cloudpickle>=1.2.3 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from coffea==2025.12.0) (2.2.0)
+Requirement already satisfied: correctionlib>=2.6.0 in ./.local/lib/python3.11/site-packages (from coffea==2025.12.0) (2.8.0)
+Requirement already satisfied: dask-awkward>=2025.9.0 in ./.local/lib/python3.11/site-packages (from coffea==2025.12.0) (2026.2.1)
+Requirement already satisfied: dask-histogram>=2025.2.0 in ./.local/lib/python3.11/site-packages (from coffea==2025.12.0) (2026.2.0)
+Requirement already satisfied: dask>=2024.3.0 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from dask[array]>=2024.3.0->coffea==2025.12.0) (2024.5.0)
+Requirement already satisfied: fsspec in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from coffea==2025.12.0) (2023.10.0)
+Requirement already satisfied: hist>=2 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from coffea==2025.12.0) (2.7.2)
+Requirement already satisfied: ipywidgets in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from coffea==2025.12.0) (7.6.3)
+Requirement already satisfied: loky>=3.5.6 in ./.local/lib/python3.11/site-packages (from coffea==2025.12.0) (3.5.6)
+Requirement already satisfied: lz4 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from coffea==2025.12.0) (4.0.0)
+Requirement already satisfied: matplotlib>=3 in ./.local/lib/python3.11/site-packages (from coffea==2025.12.0) (3.10.9)
+Requirement already satisfied: mplhep>=0.1.18 in ./.local/lib/python3.11/site-packages (from coffea==2025.12.0) (1.2.0)
+Requirement already satisfied: numba>=0.58.1 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from coffea==2025.12.0) (0.58.1)
+Requirement already satisfied: numpy>=1.22 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from coffea==2025.12.0) (1.26.4)
+Requirement already satisfied: packaging in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from coffea==2025.12.0) (23.2)
+Requirement already satisfied: pandas in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from coffea==2025.12.0) (2.2.2)
+Requirement already satisfied: pyarrow>=6.0.0 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from coffea==2025.12.0) (15.0.0)
+Requirement already satisfied: pydantic in ./.local/lib/python3.11/site-packages (from coffea==2025.12.0) (2.13.4)
+Requirement already satisfied: requests in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from coffea==2025.12.0) (2.31.0)
+Requirement already satisfied: rich in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from coffea==2025.12.0) (12.6.0)
+Requirement already satisfied: scipy>=1.1.0 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from coffea==2025.12.0) (1.11.4)
+Requirement already satisfied: toml>=0.10.2 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from coffea==2025.12.0) (0.10.2)
+Requirement already satisfied: tqdm>=4.27.0 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from coffea==2025.12.0) (4.66.1)
+Requirement already satisfied: uproot>=5.6.0 in ./.local/lib/python3.11/site-packages (from coffea==2025.12.0) (5.7.4)
+Requirement already satisfied: vector!=1.6.0,>=1.4.1 in ./.local/lib/python3.11/site-packages (from coffea==2025.12.0) (1.8.1)
+Requirement already satisfied: awkward-cpp==52 in ./.local/lib/python3.11/site-packages (from awkward>=2.8.9->coffea==2025.12.0) (52)
+Requirement already satisfied: importlib-metadata>=4.13.0 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from awkward>=2.8.9->coffea==2025.12.0) (6.6.0)
+Requirement already satisfied: click>=8.1 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from dask>=2024.3.0->dask[array]>=2024.3.0->coffea==2025.12.0) (8.1.7)
+Requirement already satisfied: partd>=1.2.0 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from dask>=2024.3.0->dask[array]>=2024.3.0->coffea==2025.12.0) (1.2.0)
+Requirement already satisfied: pyyaml>=5.3.1 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from dask>=2024.3.0->dask[array]>=2024.3.0->coffea==2025.12.0) (6.0.1)
+Requirement already satisfied: toolz>=0.10.0 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from dask>=2024.3.0->dask[array]>=2024.3.0->coffea==2025.12.0) (0.12.1)
+Requirement already satisfied: typing-extensions>=4.8.0 in ./.local/lib/python3.11/site-packages (from dask-awkward>=2025.9.0->coffea==2025.12.0) (4.15.0)
+Requirement already satisfied: boost-histogram>=1.3.2 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from dask-histogram>=2025.2.0->coffea==2025.12.0) (1.3.2)
+Requirement already satisfied: histoprint>=2.2.0 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from hist>=2->coffea==2025.12.0) (2.2.0)
+Requirement already satisfied: contourpy>=1.0.1 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from matplotlib>=3->coffea==2025.12.0) (1.0.7)
+Requirement already satisfied: cycler>=0.10 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from matplotlib>=3->coffea==2025.12.0) (0.10.0)
+Requirement already satisfied: fonttools>=4.22.0 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from matplotlib>=3->coffea==2025.12.0) (4.40.0)
+Requirement already satisfied: kiwisolver>=1.3.1 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from matplotlib>=3->coffea==2025.12.0) (1.4.5)
+Requirement already satisfied: pillow>=8 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from matplotlib>=3->coffea==2025.12.0) (9.5.0)
+Requirement already satisfied: pyparsing>=3 in ./.local/lib/python3.11/site-packages (from matplotlib>=3->coffea==2025.12.0) (3.3.2)
+Requirement already satisfied: python-dateutil>=2.7 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from matplotlib>=3->coffea==2025.12.0) (2.9.0)
+Requirement already satisfied: mplhep-data>=0.0.4 in ./.local/lib/python3.11/site-packages (from mplhep>=0.1.18->coffea==2025.12.0) (0.0.5)
+Requirement already satisfied: uhi>=0.2.0 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from mplhep>=0.1.18->coffea==2025.12.0) (0.3.0)
+Requirement already satisfied: llvmlite<0.42,>=0.41.0dev0 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from numba>=0.58.1->coffea==2025.12.0) (0.41.1)
+Requirement already satisfied: annotated-types>=0.6.0 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from pydantic->coffea==2025.12.0) (0.6.0)
+Requirement already satisfied: pydantic-core==2.46.4 in ./.local/lib/python3.11/site-packages (from pydantic->coffea==2025.12.0) (2.46.4)
+Requirement already satisfied: typing-inspection>=0.4.2 in ./.local/lib/python3.11/site-packages (from pydantic->coffea==2025.12.0) (0.4.2)
+Requirement already satisfied: cramjam>=2.5.0 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from uproot>=5.6.0->coffea==2025.12.0) (2.8.3)
+Requirement already satisfied: xxhash in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from uproot>=5.6.0->coffea==2025.12.0) (3.4.1)
+Requirement already satisfied: attrs>=17.3.0 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from aiohttp->coffea==2025.12.0) (23.1.0)
+Requirement already satisfied: charset-normalizer<4.0,>=2.0 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from aiohttp->coffea==2025.12.0) (2.0.6)
+Requirement already satisfied: multidict<7.0,>=4.5 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from aiohttp->coffea==2025.12.0) (6.0.2)
+Requirement already satisfied: async_timeout<5.0,>=4.0.0a3 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from aiohttp->coffea==2025.12.0) (4.0.2)
+Requirement already satisfied: yarl<2.0,>=1.0 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from aiohttp->coffea==2025.12.0) (1.9.4)
+Requirement already satisfied: frozenlist>=1.1.1 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from aiohttp->coffea==2025.12.0) (1.4.1)
+Requirement already satisfied: aiosignal>=1.1.2 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from aiohttp->coffea==2025.12.0) (1.2.0)
+Requirement already satisfied: pytz>=2020.1 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from pandas->coffea==2025.12.0) (2022.7.1)
+Requirement already satisfied: tzdata>=2022.7 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from pandas->coffea==2025.12.0) (2024.1)
+Requirement already satisfied: idna<4,>=2.5 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from requests->coffea==2025.12.0) (3.2)
+Requirement already satisfied: urllib3<3,>=1.21.1 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from requests->coffea==2025.12.0) (1.26.16)
+Requirement already satisfied: certifi>=2017.4.17 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from requests->coffea==2025.12.0) (2022.12.7)
+Requirement already satisfied: commonmark<0.10.0,>=0.9.0 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from rich->coffea==2025.12.0) (0.9.1)
+Requirement already satisfied: pygments<3.0.0,>=2.6.0 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from rich->coffea==2025.12.0) (2.9.0)
+Requirement already satisfied: six in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from cycler>=0.10->matplotlib>=3->coffea==2025.12.0) (1.16.0)
+Requirement already satisfied: zipp>=0.5 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from importlib-metadata>=4.13.0->awkward>=2.8.9->coffea==2025.12.0) (3.15.0)
+Requirement already satisfied: locket in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from partd>=1.2.0->dask>=2024.3.0->dask[array]>=2024.3.0->coffea==2025.12.0) (1.0.0)
+Requirement already satisfied: mplhep in ./.local/lib/python3.11/site-packages (1.2.0)
+Requirement already satisfied: matplotlib>=3.10.8 in ./.local/lib/python3.11/site-packages (from mplhep) (3.10.9)
+Requirement already satisfied: mplhep-data>=0.0.4 in ./.local/lib/python3.11/site-packages (from mplhep) (0.0.5)
+Requirement already satisfied: numpy>=1.16.0 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from mplhep) (1.26.4)
+Requirement already satisfied: packaging in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from mplhep) (23.2)
+Requirement already satisfied: uhi>=0.2.0 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from mplhep) (0.3.0)
+Requirement already satisfied: contourpy>=1.0.1 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from matplotlib>=3.10.8->mplhep) (1.0.7)
+Requirement already satisfied: cycler>=0.10 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from matplotlib>=3.10.8->mplhep) (0.10.0)
+Requirement already satisfied: fonttools>=4.22.0 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from matplotlib>=3.10.8->mplhep) (4.40.0)
+Requirement already satisfied: kiwisolver>=1.3.1 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from matplotlib>=3.10.8->mplhep) (1.4.5)
+Requirement already satisfied: pillow>=8 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from matplotlib>=3.10.8->mplhep) (9.5.0)
+Requirement already satisfied: pyparsing>=3 in ./.local/lib/python3.11/site-packages (from matplotlib>=3.10.8->mplhep) (3.3.2)
+Requirement already satisfied: python-dateutil>=2.7 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from matplotlib>=3.10.8->mplhep) (2.9.0)
+Requirement already satisfied: six in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from cycler>=0.10->matplotlib>=3.10.8->mplhep) (1.16.0)
+Requirement already satisfied: magiconfig in ./.local/lib/python3.11/site-packages (2.4.4)
+Requirement already satisfied: six in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from magiconfig) (1.16.0)
+Requirement already satisfied: fastjet in ./.local/lib/python3.11/site-packages (3.5.1.3)
+Requirement already satisfied: awkward>=2 in ./.local/lib/python3.11/site-packages (from fastjet) (2.9.0)
+Requirement already satisfied: numpy>=1.13.3 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from fastjet) (1.26.4)
+Requirement already satisfied: vector in ./.local/lib/python3.11/site-packages (from fastjet) (1.8.1)
+Requirement already satisfied: awkward-cpp==52 in ./.local/lib/python3.11/site-packages (from awkward>=2->fastjet) (52)
+Requirement already satisfied: fsspec>=2022.11.0 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from awkward>=2->fastjet) (2023.10.0)
+Requirement already satisfied: importlib-metadata>=4.13.0 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from awkward>=2->fastjet) (6.6.0)
+Requirement already satisfied: packaging in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from awkward>=2->fastjet) (23.2)
+Requirement already satisfied: zipp>=0.5 in /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages (from importlib-metadata>=4.13.0->awkward>=2->fastjet) (3.15.0)
+delphes
+make: Nothing to be done for 'all'.
+[check] python and key packages
+Python 3.11.9
+python ok: 3.11.9
+import ok: uproot
+import ok: awkward
+import ok: numpy
+[timing] Starting event generation...
+
+[debug] python import test of master_cms config:
+[generate] MASTER CMS config (uses configs/master_cms.py)
+[cfg] Using rinv=0.5
+
+I am using my CMS-based master model
+
+Configuration:
+  channel  = s
+  mmed     = 1000
+  Nc       = 2
+  Nf       = 2
+  mpi      = 20.0
+  mrho     = 20.0
+  scale    = 35.15393738579578
+  mq       = 10.0
+  pvector  = 0.75
+  rinv     = 0.5
+  spectrum = cms
+
+cd models/s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5
+wrote config.py
+wrote pythia_card.txt
+wrote delphes_card.txt
+Running Pythia (log_pythia8.log)
+/srv/work_j3086704.1/model_building/install/pythia8/examples/main42 pythia_card.txt events.hepmc
+Compressing Pythia output
+wrote events.hepmc.gz
+Running Delphes (log_delphes.log)
+gunzip -c events.hepmc.gz | DelphesHepMC2 delphes_card.txt events.root
+wrote events.root
+Predicted rinv = nan
+Average alpha_3body = nan (nan)
+Average computed rinv value (pions) = 0.44048 (0.31306)
+Average jet-level rinv (proj) = 0.39344 (0.42292), 0.21429 (0.36422), 0.30983 (0.40656)
+Average dijet-level rinv (proj) = 0.36008 (0.34455)
+Global jet-level rinv (proj) = 0.33074
+Average jet-level rinv (shape) = 0.32757 (0.41165), 0.15231 (0.34682), 0.24578 (0.39262)
+Average dijet-level rinv (shape) = 0.29561 (0.36192)
+Global jet-level rinv (shape) = 0.2944
+
+DHJet
+90% radius (jet shape): 0.14 (0.22), 0.0056 (0.0089), 0.076 (0.17)
+95% radius (jet shape): 0.15 (0.22), 0.037 (0.084), 0.096 (0.18)
+99% radius (jet shape): 0.15 (0.22), 0.037 (0.084), 0.096 (0.18)
+
+DHVJet
+90% radius (jet shape): 0.76 (0.47), 0.89 (0.51), 0.82 (0.5)
+95% radius (jet shape): 0.96 (0.61), 1.1 (0.66), 1.0 (0.64)
+99% radius (jet shape): 1.1 (0.76), 1.6 (0.99), 1.3 (0.91)
+
+DHIVJet
+90% radius (jet shape): 0.48 (0.45), 0.8 (0.58), 0.63 (0.54)
+95% radius (jet shape): 0.73 (0.7), 1.0 (0.75), 0.86 (0.74)
+99% radius (jet shape): 0.79 (0.77), 1.4 (1.0), 1.1 (0.96)
+wrote histograms of events.root
+[timing] Event generation finished
+[timing] Generation time: 23 seconds (~0 min)
+
+[models created listed RIGHT HERE!!!!!!!!!!!!!!!]
+s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5
+[models with config.py]
+models/s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5
+[debug] show produced model config rinv
+found 1 config.py
+latest: models/s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5/config.py
+config.rinv = 0.5
+[env] MB_MODELS_BASE=/srv/work_j3086704.1/model_building/models
+[analysis] python add_new_DS_observables.py
+
+
+Start loading events
+
+
+/cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages/numpy/core/fromnumeric.py:3504: RuntimeWarning: Mean of empty slice.
+  return _methods._mean(a, axis=axis, dtype=dtype,
+/cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/lib/python3.11/site-packages/numpy/core/_methods.py:129: RuntimeWarning: invalid value encountered in scalar divide
+  ret = ret.dtype.type(ret / rcount)
+
+
+Finished loading events in 4.858 seconds ~0.081 minutes
+
+
+
+=== Event 0 : 1 jets ===
+  Jet  0: eta = -4.257, phi =  0.163, pT =  24.260 GeV, girth =  0.2176
+
+=== Event 1 : 3 jets ===
+  Jet  0: eta = -0.542, phi = -2.178, pT =  175.060 GeV, girth =  0.2533
+  Jet  1: eta = -1.452, phi =  0.987, pT =  160.046 GeV, girth =  0.0903
+  Jet  2: eta =  3.310, phi = -1.645, pT =  17.646 GeV, girth =  0.3536
+
+=== Event 2 : 5 jets ===
+  Jet  0: eta =  1.331, phi =  1.383, pT =  244.128 GeV, girth =  0.3035
+  Jet  1: eta =  0.382, phi = -0.905, pT =  41.915 GeV, girth =  0.4421
+  Jet  2: eta = -1.012, phi = -2.575, pT =  29.123 GeV, girth =  0.2823
+  Jet  3: eta =  0.472, phi = -2.123, pT =  18.991 GeV, girth =  0.2975
+  Jet  4: eta = -0.949, phi = -0.137, pT =  15.274 GeV, girth =  0.3071
+
+=== Event 3 : 3 jets ===
+  Jet  0: eta =  1.699, phi = -0.044, pT =  41.432 GeV, girth =  0.1535
+  Jet  1: eta =  3.882, phi =  3.011, pT =  22.823 GeV, girth =  0.1479
+  Jet  2: eta =  1.602, phi =  2.946, pT =  22.165 GeV, girth =  0.1996
+
+=== Event 4 : 0 jets ===
+
+=== Event 5 : 1 jets ===
+  Jet  0: eta =  4.741, phi = -1.305, pT =  33.819 GeV, girth =  0.0366
+
+=== Event 6 : 4 jets ===
+  Jet  0: eta = -0.343, phi =  1.331, pT =  163.337 GeV, girth =  0.1194
+  Jet  1: eta = -0.553, phi = -1.540, pT =  158.005 GeV, girth =  0.2239
+  Jet  2: eta = -1.749, phi = -3.110, pT =  42.696 GeV, girth =  0.1705
+  Jet  3: eta = -0.596, phi =  2.771, pT =  29.619 GeV, girth =  0.3609
+
+=== Event 7 : 4 jets ===
+  Jet  0: eta =  3.595, phi = -1.250, pT =  40.026 GeV, girth =  0.2471
+  Jet  1: eta =  2.549, phi = -2.714, pT =  18.016 GeV, girth =  0.3659
+  Jet  2: eta =  1.270, phi =  2.685, pT =  17.061 GeV, girth =  0.1217
+  Jet  3: eta =  3.560, phi =  0.222, pT =  15.055 GeV, girth =  0.3114
+
+=== Event 8 : 0 jets ===
+
+=== Event 9 : 4 jets ===
+  Jet  0: eta = -1.680, phi =  2.675, pT =  28.434 GeV, girth =  0.2922
+  Jet  1: eta = -3.799, phi = -0.120, pT =  25.451 GeV, girth =  0.3350
+  Jet  2: eta =  0.042, phi =  2.476, pT =  17.586 GeV, girth =  0.2766
+  Jet  3: eta = -4.506, phi = -1.111, pT =  16.569 GeV, girth =  0.2130
+
+=== Event 10 : 1 jets ===
+  Jet  0: eta = -0.246, phi =  1.883, pT =  19.967 GeV, girth =  0.1683
+
+=== Event 11 : 0 jets ===
+
+=== Event 12 : 1 jets ===
+  Jet  0: eta =  1.575, phi = -0.303, pT =  19.307 GeV, girth =  0.4366
+
+=== Event 13 : 1 jets ===
+  Jet  0: eta = -3.256, phi =  0.760, pT =  47.080 GeV, girth =  0.4003
+
+=== Event 14 : 2 jets ===
+  Jet  0: eta =  2.985, phi = -1.321, pT =  17.104 GeV, girth =  0.3133
+  Jet  1: eta = -2.148, phi = -0.766, pT =  15.878 GeV, girth =  0.2377
+
+=== Event 15 : 1 jets ===
+  Jet  0: eta =  0.977, phi = -0.309, pT =  23.919 GeV, girth =  0.0578
+
+=== Event 16 : 0 jets ===
+
+=== Event 17 : 2 jets ===
+  Jet  0: eta =  0.880, phi = -2.759, pT =  60.766 GeV, girth =  0.0887
+  Jet  1: eta =  2.487, phi = -0.871, pT =  18.912 GeV, girth =  0.2637
+
+=== Event 18 : 0 jets ===
+
+=== Event 19 : 2 jets ===
+  Jet  0: eta = -1.066, phi =  2.251, pT =  27.564 GeV, girth =  0.1410
+  Jet  1: eta = -0.380, phi = -2.022, pT =  18.534 GeV, girth =  0.1711
+
+
+Starting ECFs calculation
+
+
+
+
+Finished ECF calculation and plotting in 0.680 seconds  ~0.011 minutes
+
+
+
+
+Starting Lund Plane calculation
+
+
+s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5: used 21 jets
+
+
+Finished Lund Plane calculation and plotting in 0.680 seconds  ~0.011 minutes
+
+
+Friend trees saved under: /srv/work_j3086704.1/model_building/models
+Wrote friend with zipped FatJet and Lund records: /srv/work_j3086704.1/model_building/models/s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5/events_friend_s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5_j3086704.1.root
+[merge] Looking for friend trees to merge ...
+[merge] model_dir   = models/s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5
+[merge] main_file   = models/s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5/events.root
+[merge] friend_file = models/s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5/events_friend_s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5_j3086704.1.root
+[merge] merged_file = models/s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5/merged_tree_s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5_j3086704.1.root
+
+Processing merge_trees.C("models/s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5/events.root","models/s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5/events_friend_s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5_j3086704.1.root","models/s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5/merged_tree_s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5_j3086704.1.root")...
+Wrote models/s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5/merged_tree_s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5_j3086704.1.root with full Delphes + 2 friend branches (prefixed F_*)
+(int) 0
+[merge] Successfully wrote models/s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5/merged_tree_s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5_j3086704.1.root
+[stage-out] collecting outputs ...
+[stage-out] friend trees by model ...
+  -> events_friend_s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5_j3086704.1.root  -->  /store/user/ovazquez/model_building/outputs/j3086704.1-master_cms-rinv=0.5/s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5/
+  -> events.root  -->  /store/user/ovazquez/model_building/outputs/j3086704.1-master_cms-rinv=0.5/s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5/
+  -> merged_tree_s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5_j3086704.1.root  -->  /store/user/ovazquez/model_building/outputs/j3086704.1-master_cms-rinv=0.5/s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5/
+  -> config.py  -->  /store/user/ovazquez/model_building/outputs/j3086704.1-master_cms-rinv=0.5/s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5/
+  -> pythia_card.txt  -->  /store/user/ovazquez/model_building/outputs/j3086704.1-master_cms-rinv=0.5/s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5/
+  -> delphes_card.txt  -->  /store/user/ovazquez/model_building/outputs/j3086704.1-master_cms-rinv=0.5/s-channel_mmed-1000_Nc-2_Nf-2_scale-35.1539_mq-10_mpi-20_mrho-20_pvector-0.75_spectrum-cms_gq-1_gchi-1_rinv-0.5/
+[stage-out] logs ...
+Done.
+Mon Jun  8 20:40:02 UTC 2026
