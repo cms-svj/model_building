@@ -1,3 +1,4 @@
+import fastjet
 import awkward as ak
 import pickle
 import numpy as np
@@ -8,7 +9,6 @@ from common import load_events
 from collections import defaultdict
 from itertools import chain
 from scipy.stats import sem
-import fastjet
 
 def ET(vec):
     return np.sqrt(vec.px**2+vec.py**2+vec.mass**2)
@@ -78,7 +78,14 @@ def fj_cluster_sequence(jets):
     # Re-cluster the constituents with Cambridge/Aachen.
     # Using a very large R guarantees a single C/A jet containing all constituents
     jet_def = fastjet.JetDefinition(fastjet.cambridge_algorithm, 1000.0)
-    cs = fastjet.ClusterSequence(jets.Constituents, jet_def)
+    # Jets with zero constituents (e.g. DHV jets whose dark hadrons were all stable) cause issues
+    # to_packed is required: fastjet clusters the whole underlying buffer, ignoring masks/slices
+    # so the empty jets must be removed from it.
+    # Masking via indices (not ak.mask on jets directly) guarantees an
+    # IndexedOptionArray, which to_packed compacts even when the input has no Nones yet
+    nonempty = ak.fill_none(ak.num(jets.Constituents, axis=1) > 0, False)
+    jets = jets[ak.mask(ak.local_index(jets, axis=0), nonempty)]
+    cs = fastjet.ClusterSequence(ak.to_packed(jets.Constituents), jet_def)
     return cs
 
 def getLundMultiplicity(cluster_seq, kt = 1):
@@ -538,6 +545,14 @@ def histogram(filename, helper, with_constituents=True, gen_only=False, debug=Fa
             # also compute nconst and girth
             events[f"{pre}Jet12_girth"] = calculate_girth(events[f"{pre}Jet12"])
             events[f"{pre}Jet12_nconst"] = ak.num(events[f"{pre}Jet12"].Constituents, axis=-1)
+            events[f"{pre}Jet12_majoraxis"], events[f"{pre}Jet12_minoraxis"] = calc_axis1_axis2(events[f"{pre}Jet12"])
+
+            jet12_shape = ak.num(events[f"{pre}Jet12"], axis=1)
+            cs = fj_cluster_sequence(ak.flatten(events[f"{pre}Jet12"], axis=1))
+            for k in kt_cuts:
+                events[f"{pre}Jet12_lundMult{k}"] = ak.unflatten(getLundMultiplicity(cs, kt = k), jet12_shape)
+            for n in n_ecf:
+                events[f"{pre}Jet12_ECF{n}"] = ak.unflatten(getECF(cs, npointECF = n), jet12_shape)
 
             # pt-weighted percentile per jet
             # scalar sum of constituent pT within DeltaR / scalar sum of all constituent pT = "jet shape"
@@ -634,14 +649,14 @@ def histogram(filename, helper, with_constituents=True, gen_only=False, debug=Fa
                 fill_hist("Jet12_minoraxis",50,0,0.5,r"$\sigma_{\text{minor}}(J_{JETIND})$"),
             ]))
             for k in kt_cuts:
-                label = f'Primary Lund Multiplicity $k_T$>{k} GeV$'
+                label = f"Primary Lund Multiplicity $k_T>{k}$ GeV "+r"$(J_{JETIND})$"
                 hist_dict.update(chain.from_iterable([
                     fill_hist(f'Jet12_lundMult{k}',12,0,12,label)
                 ]))
             for n in n_ecf:
-                label = f'$C_{n}^{{\\beta=1}}$'
+                label = f"$C_{n}^{{\\beta=1}}$"+r"$(J_{JETIND})$"
                 hist_dict.update(chain.from_iterable([
-                    fill_hist(f'Jet12_ECF{n}',30,0,0.3,label)
+                    fill_hist(f'Jet12_ECF{n}',1000,0,1,label)
                 ]))
 
         for t in events.fields:
@@ -699,6 +714,15 @@ def histogram(filename, helper, with_constituents=True, gen_only=False, debug=Fa
                 fill_hist(f"{pre}Jet12_girth",50,0,1,r"$g_{\text{jet}}(J_{JETIND}^{\text{"+label+"}})$"),
                 fill_hist(f"{pre}Jet12_nconst",nbin,-0.5,nmax,r"$n_{\text{const}}(J_{JETIND}^{\text{"+label+"}})$"),
             ]))
+
+            for k in kt_cuts:
+                hist_dict.update(chain.from_iterable([
+                    fill_hist(f"{pre}Jet12_lundMult{k}",12,0,12,f"Primary Lund Multiplicity $k_T>{k}$ GeV "+r"$(J_{JETIND}^{\text{"+label+"}})$")
+                ]))
+            for n in n_ecf:
+                hist_dict.update(chain.from_iterable([
+                    fill_hist(f"{pre}Jet12_ECF{n}",1000,0,1,f"$C_{n}^{{\\beta=1}}$"+r"$(J_{JETIND}^{\text{"+label+"}})$")
+                ]))
 
     # finish output dictionary
     output["hist"] = hist_dict
