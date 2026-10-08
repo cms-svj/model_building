@@ -19,10 +19,10 @@ environment = "PROJECT_NAME=model_building EOS_USER=$ENV(USER)"
 
 # add $(rinv) as 5th arg
 # options for models are cms, snowmass, both, master_snowmass, master_cms
-arguments = j$(Cluster).$(Process) master_snowmass 20 $$([100000 + ProcId]) $(rinv)
+arguments = j$(Cluster).$(Process) master_cms 20 $$([100000 + ProcId]) $(rinv)
 
-request_memory = 2GB
-request_disk   = 2GB
+request_memory = 8GB
+request_disk   = 8GB
 
 # queue scan points
 #queue rinv in 0.1, 0.3, 0.5, 0.7, 0.9 
