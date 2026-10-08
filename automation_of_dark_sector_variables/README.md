@@ -123,6 +123,15 @@ scripts/add_new_DS_observables.py
 
 The Python script is then used by the batch workflow.
 
+
+To run the notebook interactively, start Jupyter after `source init.sh` and select the kernel that uses the `mbenv` virtual environment created by `./install.sh`. Install this kernel once with:
+
+```bash
+python3 -m ipykernel install --user --name mbenv --display-name "Python (mbenv)"
+```
+
+Then, in the notebook, choose Kernel → Change kernel → Python (mbenv). Without this step, the notebook may fail with `ModuleNotFoundError: No module named 'magiconfig'`.
+
 ---
 
 ## Local packaging workflow
@@ -291,11 +300,17 @@ Large generated files are intentionally excluded from version control through th
 *.lhe
 *.png
 *.pdf
-condor/logs/*      (except the placeholder and the sample output below)
+*.txt
+*.pyc
+condor/logs/*      (except the placeholder .gitkeep)
+work_*/
+.root_hist
+.wget-hsts
 models/
 install/
 jobs/
 cards/
+test_downloads/
 __pycache__/
 .ipynb_checkpoints/
 ```
@@ -306,4 +321,4 @@ This folder should mainly contain source code, notebooks, shell scripts, and HTC
 
 When Python runs a script it looks for imports in the script's own folder first, so `from common import load_sample` in `add_new_DS_observables.py` uses this modified copy and not the top-level `common.py`. Other top-level modules (for example `svjHelper`) are still found through the repository root, which `run_job.sh` adds to `PYTHONPATH`. This copy is based on the top-level `common.py` at the time of writing. If the top-level file changes in ways that this workflow needs, the changes have to be copied over.
 
-**Sample output.** The folder `examples` contains a sample file named `condor_3086704_1_rinv-0.5.out`. This is an output file from Condor for a job submission of only 20 events, so it should not be used for analysis. It should only be used as a sample of what a successful submission looks like.
+**Sample output.** The folder `examples/` contains a sample file named `condor_3086704_1_rinv-0.5.out`. This is an output file from Condor for a job submission of only 20 events, so it should not be used for analysis. It should only be used as a sample of what a successful submission looks like.
