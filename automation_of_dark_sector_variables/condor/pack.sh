@@ -6,11 +6,14 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 BASE="$(dirname "${REPO_DIR}")"
 REPO="$(basename "${REPO_DIR}")"
 
-# EOS area defaults to your own username
+# EOS user defaults to your own username
 EOS_USER="${EOS_USER:-$USER}"
 
+# EOS area where the bundle and outputs go
+EOS_AREA="${EOS_AREA:-model_building_fork}"
+
 TARBALL="${BASE}/${REPO}_bundle.tgz"
-EOS_DIR="/store/user/${EOS_USER}/${REPO}/inputs"
+EOS_DIR="/store/user/${EOS_USER}/${EOS_AREA}/inputs"
 EOS_URL="root://cmseos.fnal.gov/${EOS_DIR}"
 
 echo "[pack] making ${TARBALL} from ${REPO_DIR}"

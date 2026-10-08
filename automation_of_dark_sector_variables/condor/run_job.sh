@@ -35,6 +35,13 @@ PROJECT="${PROJECT_NAME:-model_building}"
 EOS_USER="${EOS_USER:?need EOS_USER (set in the .jdl environment line)}"
 AUTO_DIR="automation_of_dark_sector_variables"
 
+
+EOS_AREA="${EOS_AREA:-$PROJECT}"
+
+
+
+
+
 echo "===== NODE INFO ====="
 date; hostname
 echo "PWD: $(pwd)"
@@ -48,7 +55,25 @@ WORKDIR="$PWD/work_${JOBTAG}"
 mkdir -p "$WORKDIR"
 cd "$WORKDIR"
 
-EOS_BASE_RSE="root://cmseos.fnal.gov//store/user/${EOS_USER}/${PROJECT}"
+
+
+
+
+
+
+# EOS_BASE_RSE="root://cmseos.fnal.gov//store/user/${EOS_USER}/${PROJECT}"
+EOS_BASE_RSE="root://cmseos.fnal.gov//store/user/${EOS_USER}/${EOS_AREA}"
+
+
+
+
+
+
+
+
+
+
+
 
 echo "ENV : PROJECT=${PROJECT} EOS_USER=${EOS_USER}"
 
@@ -80,6 +105,46 @@ MASTER_CMS_CFG="configs/master_cms.py"
 # Comands from original notebook to set up environment
 ./install.sh
 source init.sh
+
+
+
+
+
+
+
+
+
+
+echo "[debug] before fix: python3=$(which python3) VIRTUAL_ENV=${VIRTUAL_ENV:-<unset>}"
+python3 -c "import coffea; print('[debug] coffea', coffea.__version__, coffea.__file__)"
+
+# The bundled mbenv was built under a different absolute path; make sure the unpacked copy is the one used
+MBENV="$PWD/install/python_packages/mbenv"
+if [ -x "${MBENV}/bin/python3" ]; then
+  export VIRTUAL_ENV="${MBENV}"
+  export PATH="${MBENV}/bin:${PATH}"
+  hash -r
+fi
+
+echo "[debug] after fix: python3=$(which python3)"
+python3 -c "import coffea; print('[debug] coffea', coffea.__version__, coffea.__file__)"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 echo "[check] python and key packages"
@@ -332,7 +397,32 @@ fi
 
 
 # Include the job tag and the value of the variable in the name for EOS
-OUTROOT_BASE="/store/user/${EOS_USER}/${PROJECT}/outputs"
+
+
+
+
+
+
+
+
+
+# OUTROOT_BASE="/store/user/${EOS_USER}/${PROJECT}/outputs"
+OUTROOT_BASE="/store/user/${EOS_USER}/${EOS_AREA}/outputs"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 if [[ "${MODEL}" == "master_snowmass" || "${MODEL}" == "master_cms" ]]; then
   JOB_EOS_DIR="${OUTROOT_BASE}/j${CLUSTER}.${PROC}-${MODEL}-rinv=${RINV}"
 else

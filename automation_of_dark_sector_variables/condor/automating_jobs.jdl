@@ -15,7 +15,10 @@ use_x509userproxy = True
 x509userproxy     = $ENV(X509_USER_PROXY)
 
 # PROJECT_NAME must match the repo folder name; EOS_USER is taken from whoever submits
-environment = "PROJECT_NAME=model_building EOS_USER=$ENV(USER)"
+# environment = "PROJECT_NAME=model_building EOS_USER=$ENV(USER)"
+environment = "PROJECT_NAME=model_building EOS_USER=$ENV(USER) EOS_AREA=model_building_fork"
+
+
 
 # add $(rinv) as 5th arg
 # options for models are cms, snowmass, both, master_snowmass, master_cms
