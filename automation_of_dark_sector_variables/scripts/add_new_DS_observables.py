@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 import awkward as ak
@@ -30,7 +30,21 @@ DelphesSchema.mixins.update({
 })
 
 
-# In[2]:
+# In[ ]:
+
+
+import os, sys
+
+# Notebook is run from scripts/; set up the same layout the Condor job has
+if os.path.basename(os.getcwd()) == "scripts":
+    SCRIPTS_DIR = os.getcwd()
+    REPO_ROOT = os.path.abspath(os.path.join(SCRIPTS_DIR, "..", ".."))
+    sys.path.insert(0, REPO_ROOT)     # so svjHelper and other root modules are found
+    sys.path.insert(0, SCRIPTS_DIR)   # so scripts/common.py wins over the root common.py
+    os.chdir(REPO_ROOT)               # common.py uses relative "models/..." paths
+
+
+# In[ ]:
 
 
 # Have this cell read the models from the models file instead of harcoding them like in the cell below
@@ -49,7 +63,7 @@ model_dirs = pick_models("models/s-channel_*_rinv-*")
 samples = [{"name": os.path.basename(d), "model": os.path.basename(d)} for d in model_dirs]
 
 
-# In[3]:
+# In[ ]:
 
 
 # Hardcode the names of the models in here (mostly for internal testing)
@@ -69,7 +83,7 @@ samples = [{"name": os.path.basename(d), "model": os.path.basename(d)} for d in 
 # samples = [{"name": "Master Model", "model": "s-channel_mmed-1000_Nc-3_Nf-3_scale-33.3333_mq-33.73_mpi-20_mrho-83.666_pvector-0.5_spectrum-INDEPENDENTmodel_rinv-0.333333"}]
 
 
-# In[4]:
+# In[ ]:
 
 
 # Sentinel for values in arrays that are "None" or zero (Used mostly for plotting)
@@ -83,7 +97,7 @@ SENTINEL = -99.0
 
 
 
-# In[5]:
+# In[ ]:
 
 
 # Start the counter to see how long it takes to load the constituents
@@ -98,7 +112,7 @@ print()
 print()
 
 
-# In[6]:
+# In[ ]:
 
 
 # Load constituents
@@ -115,7 +129,7 @@ import common
 print("[check] common loaded from:", common.__file__)
 
 
-# In[7]:
+# In[ ]:
 
 
 print()
@@ -135,7 +149,7 @@ print()
 
 
 
-# In[8]:
+# In[ ]:
 
 
 # Pretty printer for each event and jet
@@ -264,7 +278,7 @@ for sample in samples:
 # <br>
 # <br>
 
-# In[9]:
+# In[ ]:
 
 
 print()
@@ -277,7 +291,7 @@ print()
 print()
 
 
-# In[10]:
+# In[ ]:
 
 
 def extract_ecf_value(ecf_array):
@@ -291,7 +305,7 @@ def extract_ecf_value(ecf_array):
     return float(flat[0])
 
 
-# In[11]:
+# In[ ]:
 
 
 def constituents_to_fastjet_array(constituents):
@@ -331,7 +345,7 @@ def constituents_to_fastjet_array(constituents):
     return ak.Array([particles])
 
 
-# In[12]:
+# In[ ]:
 
 
 def calculate_n2_n3_fastjet(
@@ -490,7 +504,7 @@ def calculate_n2_n3_fastjet(
     return ak.to_packed(N2), ak.to_packed(N3)
 
 
-# In[13]:
+# In[ ]:
 
 
 beta = 1.0
@@ -511,7 +525,7 @@ for sample in samples:
     sample["events"] = events
 
 
-# In[14]:
+# In[ ]:
 
 
 plt.figure(figsize=(14, 5))
@@ -558,7 +572,7 @@ plt.legend()
 plt.show()
 
 
-# In[15]:
+# In[ ]:
 
 
 plt.figure(figsize=(14, 5))
@@ -606,7 +620,7 @@ plt.legend()
 plt.show()
 
 
-# In[16]:
+# In[ ]:
 
 
 print()
@@ -620,7 +634,7 @@ print()
 print()
 
 
-# In[17]:
+# In[ ]:
 
 
 del N2, N3, n2_values, n3_values
@@ -632,7 +646,7 @@ gc.collect()
 # <br>
 # <br>
 
-# In[18]:
+# In[ ]:
 
 
 # Prepare arrays so they are safe for ROOT
@@ -650,7 +664,7 @@ def to_f32_jagged(arr):
     return ak.values_astype(arr, np.float32)
 
 
-# In[19]:
+# In[ ]:
 
 
 def plot_primary_lund_image(
@@ -705,7 +719,7 @@ def plot_primary_lund_image(
     plt.show()
 
 
-# In[20]:
+# In[ ]:
 
 
 def make_primary_lund_image_from_xy(
@@ -749,7 +763,7 @@ def make_primary_lund_image_from_xy(
 # **Lund Calculation with fast jet algorithm**
 # <br>
 
-# In[21]:
+# In[ ]:
 
 
 #  Calculate primary Lund-plane points using FastJet.
@@ -878,7 +892,7 @@ def calculate_primary_lund_xy_fastjet(
     return LundX, LundY, n_jets
 
 
-# In[22]:
+# In[ ]:
 
 
 for isample, sample in enumerate(samples):
@@ -937,7 +951,7 @@ for isample, sample in enumerate(samples):
     );
 
 
-# In[23]:
+# In[ ]:
 
 
 print()
@@ -981,7 +995,7 @@ print()
 
 
 
-# In[24]:
+# In[ ]:
 
 
 # Helper functions to create friend tree
@@ -1035,7 +1049,7 @@ def force_fatjet_layout(arr, FJ, name):
 
 
 
-# In[25]:
+# In[ ]:
 
 
 # Create friend tree with new variables created
