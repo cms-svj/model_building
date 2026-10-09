@@ -36,18 +36,12 @@ EOS_USER="${EOS_USER:?need EOS_USER (set in the .jdl environment line)}"
 AUTO_DIR="automation_of_dark_sector_variables"
 
 
-EOS_AREA="${EOS_AREA:-$PROJECT}"
-
-
-
-
 
 echo "===== NODE INFO ====="
 date; hostname
-echo "PWD: $(pwd)"
-# echo "ARGS: JOBTAG=${JOBTAG} MODEL=${MODEL} NEV=${NEV} SEED=${SEED}"    
+echo "PWD: $(pwd)"  
 echo "ARGS: JOBTAG=${JOBTAG} MODEL=${MODEL} NEV=${NEV} SEED=${SEED} RINV=${RINV:-<unset>}"
-echo "ENV : PROJECT=${PROJECT}"
+echo "ENV : PROJECT=${PROJECT} EOS_USER=${EOS_USER}"
 echo "====================="
 
 # Working area for this job
@@ -56,26 +50,9 @@ mkdir -p "$WORKDIR"
 cd "$WORKDIR"
 
 
+EOS_BASE_RSE="root://cmseos.fnal.gov//store/user/${EOS_USER}/${PROJECT}"
 
 
-
-
-
-# EOS_BASE_RSE="root://cmseos.fnal.gov//store/user/${EOS_USER}/${PROJECT}"
-EOS_BASE_RSE="root://cmseos.fnal.gov//store/user/${EOS_USER}/${EOS_AREA}"
-
-
-
-
-
-
-
-
-
-
-
-
-echo "ENV : PROJECT=${PROJECT} EOS_USER=${EOS_USER}"
 
 echo "[stage-in] fetch code bundle ..."
 xrdcp -f "${EOS_BASE_RSE}/inputs/${PROJECT}_bundle.tgz" bundle.tgz
@@ -102,14 +79,11 @@ MASTER_CMS_CFG="configs/master_cms.py"
 
 
 
+
+
 # Comands from original notebook to set up environment
 ./install.sh
 source init.sh
-
-
-
-
-
 
 
 
@@ -128,18 +102,6 @@ fi
 
 echo "[debug] after fix: python3=$(which python3)"
 python3 -c "import coffea; print('[debug] coffea', coffea.__version__, coffea.__file__)"
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -193,25 +155,6 @@ echo "[timing] Starting event generation..."
 echo ""
 GEN_START=$(date +%s)
 
-
-
-
-echo "[debug] python import test of master_cms config:"
-python3 - <<PY
-import os, traceback, importlib.util
-os.environ["RINV"] = "${RINV:-0.3}"
-try:
-    spec = importlib.util.spec_from_file_location("master_cms_cfg", "${MASTER_CMS_CFG}")
-    m = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(m)
-    print("loaded ok; has config =", hasattr(m, "config"))
-    if hasattr(m, "config"):
-        print("config.spectrum =", getattr(m.config, "spectrum", None))
-        print("config.rinv =", getattr(m.config, "rinv", None))
-except Exception:
-    traceback.print_exc()
-    raise
-PY
 
 
 
@@ -280,7 +223,7 @@ echo ""
 
 
 
-echo "[models created listed RIGHT HERE!!!!!!!!!!!!!!!]"
+echo "[models created listed RIGHT HERE!]"
 ls -1 models || echo "[no models directory found]"
 
 echo "[models with config.py]"
@@ -311,18 +254,6 @@ PY
 export MB_MODELS_BASE="$(pwd)/models"  
 export MB_JOBTAG="${JOBTAG}"
 echo "[env] MB_MODELS_BASE=${MB_MODELS_BASE}"
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -399,25 +330,7 @@ fi
 # Include the job tag and the value of the variable in the name for EOS
 
 
-
-
-
-
-
-
-
-# OUTROOT_BASE="/store/user/${EOS_USER}/${PROJECT}/outputs"
-OUTROOT_BASE="/store/user/${EOS_USER}/${EOS_AREA}/outputs"
-
-
-
-
-
-
-
-
-
-
+OUTROOT_BASE="/store/user/${EOS_USER}/${PROJECT}/outputs"
 
 
 
@@ -486,14 +399,6 @@ while IFS= read -r f; do
 done < <(find "${PROJECT}/models" -type f -name 'events_friend*.root')
 
 
-
-# # Stage plots (pdf/png)
-# echo "[stage-out] plots ..."
-# shopt -s nullglob
-# for p in $(find "${PROJECT}" -type f \( -name '*.pdf' -o -name '*.png' \)); do
-#   xrdcp -f "$p" "${JOB_EOS_RSE}/"
-# done
-# shopt -u nullglob
 
 
 # Stage logs

@@ -95,7 +95,7 @@ Before submitting, open `automating_jobs.jdl` and check:
 - **Scan values**: the `queue rinv in ...` line at the end of the file.
 - **`PROJECT_NAME`** in the `environment` line must match the name of the folder you cloned the repository into (`model_building` by default).
 
-The EOS user name is taken automatically from the user who submits the jobs. Note that `pack.sh` overwrites the bundle on EOS, so wait for any jobs that are still running with an older version of the code before packing again.
+The EOS user name is taken automatically from the user who submits the jobs. Note that `pack.sh` overwrites the bundle on EOS, and every job downloads the bundle when it starts. Jobs that are already running keep the code they downloaded, but jobs still waiting in the queue will use the newest bundle. If you change the code and pack again, wait until all submitted jobs have started running, or use a different `EOS_AREA` for each version.
 
 ---
 
@@ -197,7 +197,7 @@ The `master_snowmass.py` file is based on the Snowmass model, while `master_cms.
 Both files are based respectively on existing configurations in the original repository:
 
 ```text
-configs/model_snowmass_cmslike.py
+configs/model_snowmass_base.py
 configs/model_cms.py
 ```
 

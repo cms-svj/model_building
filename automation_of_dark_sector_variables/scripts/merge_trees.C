@@ -52,7 +52,7 @@ int merge_trees(
   // --- Which friend branches to add (leaf-counted Float_t arrays) ---
   const std::vector<std::string> want = {
     "FatJet_N2", "FatJet_N3",
-    "Lund_X", "Lund_Y"
+    "FatJet_LundX", "FatJet_LundY"
   };
 
   // Readers

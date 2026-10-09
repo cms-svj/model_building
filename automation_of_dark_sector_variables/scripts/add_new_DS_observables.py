@@ -47,7 +47,8 @@ if os.path.basename(os.getcwd()) == "scripts":
 # In[ ]:
 
 
-# Have this cell read the models from the models file instead of harcoding them like in the cell below
+# Have this cell read the models from the models file instead of harcoding them 
+# like in the cell below 
 
 import glob, os
 
