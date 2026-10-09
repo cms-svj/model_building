@@ -317,7 +317,7 @@ __pycache__/
 
 This folder should mainly contain source code, notebooks, shell scripts, and HTCondor submission files. The master configuration files live in the top-level `configs/` folder.
 
-**Modified `common.py`.** The `scripts/` folder contains a modified version of `common.py` from the original model-building repository. The `fix_delphes_mass_units` function was updated to check whether each particle collection and its `Mass` field exist before applying the unit conversion, since some ROOT files do not contain all expected collections, such as `GenStableCandidate`. Similarly, `init_constituents` now verifies that each jet collection, associated constituent collection, and `Constituents` field are available before processing them, allowing the code to safely skip missing collections instead of failing.
+scripts/common.py is a copy of the top-level common.py with two guards added, in fix_delphes_mass_units and init_constituents, so that collections missing from a ROOT file are skipped instead of causing an error.
 
 When Python runs a script it looks for imports in the script's own folder first, so `from common import load_sample` in `add_new_DS_observables.py` uses this modified copy and not the top-level `common.py`. Other top-level modules (for example `svjHelper`) are still found through the repository root, which `run_job.sh` adds to `PYTHONPATH`. This copy is based on the top-level `common.py` at the time of writing. If the top-level file changes in ways that this workflow needs, the changes have to be copied over.
 
