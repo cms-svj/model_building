@@ -97,8 +97,8 @@ def getLundMultiplicity(cluster_seq, kt = 1):
     mult = ak.sum(kt_values > kt, axis=-1)
     return mult
 
-def getECF(cluster_seq, npointECF):
-    ecf = cluster_seq.exclusive_jets_energy_correlator(njets=1, npoint=npointECF, beta=1)
+def getECF(cluster_seq, **kwargs):
+    ecf = cluster_seq.exclusive_jets_energy_correlator(njets=1, beta=1, **kwargs)
     return ecf
 
 def ak_isin(arr, allowed):
@@ -443,7 +443,14 @@ def histogram(filename, helper, with_constituents=True, gen_only=False, debug=Fa
 
         # add substructure quantities
         kt_cuts = [1,2,5,10]
-        n_ecf = [2,3]
+        # name: (fastjet energy_correlator kwargs, label, binning); default func gives normalized e_n
+        ecfs = {
+            "e2": (dict(npoint=2), r"$e_2^{(\beta=1)}$", (1000,0,1)),
+            "e3": (dict(npoint=3), r"$e_3^{(\beta=1)}$", (1000,0,1)),
+            "C2": (dict(func="c2"), r"$C_2^{(\beta=1)}$", (150,0,1.5)),
+            "D2": (dict(func="d2"), r"$D_2^{(\beta=1)}$", (200,0,20)),
+            "N2": (dict(func="n2"), r"$N_2^{(\beta=1)}$", (50,0,0.5)),
+        }
         if with_constituents:
             events["Jet12_girth"] = calculate_girth(events["Jet12"])
             events["Jet12_ptD"] = calculate_ptD(events["Jet12"])
@@ -455,8 +462,8 @@ def histogram(filename, helper, with_constituents=True, gen_only=False, debug=Fa
             cs = fj_cluster_sequence(jet12_flat)
             for k in kt_cuts:
                 events[f"Jet12_lundMult{k}"] = ak.unflatten(getLundMultiplicity(cs, kt = k), jet12_shape)
-            for n in n_ecf:
-                events[f"Jet12_ECF{n}"] = ak.unflatten(getECF(cs, npointECF = n), jet12_shape)
+            for name, (kwargs, _, _) in ecfs.items():
+                events[f"Jet12_{name}"] = ak.unflatten(getECF(cs, **kwargs), jet12_shape)
 
         events["Jet12_sdmass"] = events["Jet12"].SoftDroppedJet.mass
         events["Jet12_sdpt"] = events["Jet12"].SoftDroppedJet.pt
@@ -551,8 +558,8 @@ def histogram(filename, helper, with_constituents=True, gen_only=False, debug=Fa
             cs = fj_cluster_sequence(ak.flatten(events[f"{pre}Jet12"], axis=1))
             for k in kt_cuts:
                 events[f"{pre}Jet12_lundMult{k}"] = ak.unflatten(getLundMultiplicity(cs, kt = k), jet12_shape)
-            for n in n_ecf:
-                events[f"{pre}Jet12_ECF{n}"] = ak.unflatten(getECF(cs, npointECF = n), jet12_shape)
+            for name, (kwargs, _, _) in ecfs.items():
+                events[f"{pre}Jet12_{name}"] = ak.unflatten(getECF(cs, **kwargs), jet12_shape)
 
             # pt-weighted percentile per jet
             # scalar sum of constituent pT within DeltaR / scalar sum of all constituent pT = "jet shape"
@@ -572,9 +579,9 @@ def histogram(filename, helper, with_constituents=True, gen_only=False, debug=Fa
                 events[f"{pre}Jet12_radius{pct}"] = ak.pad_none(ak.firsts(sorted_prop[mask_pt].dr, axis=-1), target=2, axis=1)
                 for ind,key in zip(jet_inds, jet_ind_keys):
                     r_pct_pt = events[f"{pre}Jet12_radius{pct}"][:, ind]
-                    meta_dict[f"DHJet{key}_radius{pct}"] = fill_stats(r_pct_pt)
+                    meta_dict[f"{pre}Jet{key}_radius{pct}"] = fill_stats(r_pct_pt)
                 print(f"{pct}% radius (jet shape):", ", ".join(
-                    [f"{meta_dict[f'DHJet{key}_radius{pct}']['mean']:.2} ({meta_dict[f'DHJet{key}_radius{pct}']['stdev']:.2})" for key in jet_ind_keys]
+                    [f"{meta_dict[f'{pre}Jet{key}_radius{pct}']['mean']:.2} ({meta_dict[f'{pre}Jet{key}_radius{pct}']['stdev']:.2})" for key in jet_ind_keys]
                 ))
 
     # dark parton/hadron jet mass and pt
@@ -645,18 +652,17 @@ def histogram(filename, helper, with_constituents=True, gen_only=False, debug=Fa
             hist_dict.update(chain.from_iterable([
                 fill_hist("Jet12_girth",50,0,1,r"$g_{\text{jet}}(J_{JETIND})$"),
                 fill_hist("Jet12_ptD",50,0,1.01,r"$D_{p_{\text{T}}}(J_{JETIND})$"),
-                fill_hist("Jet12_majoraxis",50,0,0.5,r"$\sigma_{\text{major}}(J_{JETIND})$"),
-                fill_hist("Jet12_minoraxis",50,0,0.5,r"$\sigma_{\text{minor}}(J_{JETIND})$"),
+                fill_hist("Jet12_majoraxis",80,0,0.8,r"$\sigma_{\text{major}}(J_{JETIND})$"),
+                fill_hist("Jet12_minoraxis",80,0,0.8,r"$\sigma_{\text{minor}}(J_{JETIND})$"),
             ]))
             for k in kt_cuts:
                 label = f"Primary Lund Multiplicity $k_T>{k}$ GeV "+r"$(J_{JETIND})$"
                 hist_dict.update(chain.from_iterable([
-                    fill_hist(f'Jet12_lundMult{k}',12,0,12,label)
+                    fill_hist(f'Jet12_lundMult{k}',20,0,20,label)
                 ]))
-            for n in n_ecf:
-                label = f"$C_{n}^{{\\beta=1}}$"+r"$(J_{JETIND})$"
+            for name, (_, label, bins) in ecfs.items():
                 hist_dict.update(chain.from_iterable([
-                    fill_hist(f'Jet12_ECF{n}',1000,0,1,label)
+                    fill_hist(f'Jet12_{name}',*bins,label+r"$(J_{JETIND})$")
                 ]))
 
         for t in events.fields:
@@ -713,15 +719,17 @@ def histogram(filename, helper, with_constituents=True, gen_only=False, debug=Fa
                 fill_hist(f"{pre}Jet12_radius99",50,0,2,r"${\Delta}R_{99}(J_{JETIND}^{\text{"+label+"}})$"),
                 fill_hist(f"{pre}Jet12_girth",50,0,1,r"$g_{\text{jet}}(J_{JETIND}^{\text{"+label+"}})$"),
                 fill_hist(f"{pre}Jet12_nconst",nbin,-0.5,nmax,r"$n_{\text{const}}(J_{JETIND}^{\text{"+label+"}})$"),
+                fill_hist(f"{pre}Jet12_majoraxis",80,0,0.8,r"$\sigma_{\text{major}}(J_{JETIND}^{\text{"+label+"}})$"),
+                fill_hist(f"{pre}Jet12_minoraxis",80,0,0.8,r"$\sigma_{\text{minor}}(J_{JETIND}^{\text{"+label+"}})$"),
             ]))
 
             for k in kt_cuts:
                 hist_dict.update(chain.from_iterable([
-                    fill_hist(f"{pre}Jet12_lundMult{k}",12,0,12,f"Primary Lund Multiplicity $k_T>{k}$ GeV "+r"$(J_{JETIND}^{\text{"+label+"}})$")
+                    fill_hist(f"{pre}Jet12_lundMult{k}",20,0,20,f"Primary Lund Multiplicity $k_T>{k}$ GeV "+r"$(J_{JETIND}^{\text{"+label+"}})$")
                 ]))
-            for n in n_ecf:
+            for name, (_, ecf_label, bins) in ecfs.items():
                 hist_dict.update(chain.from_iterable([
-                    fill_hist(f"{pre}Jet12_ECF{n}",1000,0,1,f"$C_{n}^{{\\beta=1}}$"+r"$(J_{JETIND}^{\text{"+label+"}})$")
+                    fill_hist(f"{pre}Jet12_{name}",*bins,ecf_label+r"$(J_{JETIND}^{\text{"+label+"}})$")
                 ]))
 
     # finish output dictionary

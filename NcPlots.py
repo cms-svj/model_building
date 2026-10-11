@@ -23,10 +23,10 @@ samples = [
 
 data = accumulate_data(samples)
 
-# Histogram.py books all ECFs at 0.001 bin width over 0-1; ECF2 is too fine and ECF3 lives below ~0.05
+# Histogram.py books e2 and e3 at 0.001 bin width over 0-1; e2 is too fine and e3 lives below ~0.05
 hist_fixes = {
-    "ECF2": lambda h: h[::hist.rebin(5)],
-    "ECF3": lambda h: h[:hist.loc(0.05)],
+    "_e2": lambda h: h[::hist.rebin(5)],
+    "_e3": lambda h: h[:hist.loc(0.05)],
 }
 for md in (md for group in data.values() for md in group):
     for hname, h in md['hist'].items():
