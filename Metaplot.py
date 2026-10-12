@@ -11,18 +11,33 @@ from glob import glob
 import itertools
 from common import set_plot_style, accumulate_data
 
-samples = [
-    {"name": "FCDC", "models": glob("models/fcdc/s-channel_mmed-1000_Nc-*_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*_Ns-*")},
-    {"name": "simp", "models": glob("models/fcdc/s-channel_mmed-1000_Nc-3_Nf-3_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdcSimp_gq-0.25_gchi-0.333333_rinv-*")},
-    {"name": "FCDC (3-body)", "models": glob("models/fcdc/s-channel_mmed-1000_Nc-*_Nf-*_scale-3.52941_mq-3.8666_mpi-6_mrho-11.2139_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*_Ns-*")},
-    {"name": "simp (3-body)", "models": glob("models/fcdc/s-channel_mmed-1000_Nc-3_Nf-3_scale-3.52941_mq-3.8666_mpi-6_mrho-11.2139_pvector-0.333_spectrum-fcdcSimp_gq-0.25_gchi-0.333333_rinv-*")},
-]
-# account for two complete models with rinv=0.75
-for sample in samples:
-    if "simp" in sample["name"]:
-        idx = next((i for i, val in enumerate(sample["models"]) if 'rinv-0.75' in val), None)
-        if idx is not None:
-            sample["models"].insert(idx+1, sample["models"][idx])
+def all_samples(study):
+    samples = []
+    study_version = int(study[0])
+    if study_version==1:
+        samples = [
+            {"name": "FCDC", "models": glob("models/fcdc/s-channel_mmed-1000_Nc-*_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*_Ns-*")},
+            {"name": "simp", "models": glob("models/fcdc/s-channel_mmed-1000_Nc-3_Nf-3_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdcSimp_gq-0.25_gchi-0.333333_rinv-*")},
+            {"name": "FCDC (3-body)", "models": glob("models/fcdc/s-channel_mmed-1000_Nc-*_Nf-*_scale-3.52941_mq-3.8666_mpi-6_mrho-11.2139_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*_Ns-*")},
+            {"name": "simp (3-body)", "models": glob("models/fcdc/s-channel_mmed-1000_Nc-3_Nf-3_scale-3.52941_mq-3.8666_mpi-6_mrho-11.2139_pvector-0.333_spectrum-fcdcSimp_gq-0.25_gchi-0.333333_rinv-*")},
+        ]
+    elif study_version==2:
+        model = study[1]
+        samples = [
+            {"name": "FCDC", "models": glob(f"models/fcdc_var/comp_{model}/*/")},
+            {"name": "simp", "models": glob(f"models/fcdc_var/simp_{model}/*/")},
+        ]
+    else:
+        raise ValueError(f"Unknown study version {study_version}")
+
+    # account for two complete models with rinv=0.75
+    for sample in samples:
+        if "simp" in sample["name"]:
+            idx = next((i for i, val in enumerate(sample["models"]) if 'rinv-0.75' in val), None)
+            if idx is not None:
+                sample["models"].insert(idx+1, sample["models"][idx])
+
+    return samples
 
 custom_cycler = set_plot_style()
 
@@ -142,7 +157,13 @@ def make_plot(type, data, x, xlabel, qname, outdir, offset):
     plt.savefig(f'{outdir}/{type}_{qname}.pdf',bbox_inches='tight')
     plt.close(fig)
 
-def make_all_plots(outdir, types, sample_list, x, y, xlabel, forcex, offset):
+def make_all_plots(outdir, types, sample_list, study, x, y, xlabel, forcex, offset):
+    samples = all_samples(study)
+
+    unknown_samples = [s for s in sample_list if not any([s==sm['name'] for sm in samples])]
+    if unknown_samples:
+        raise ValueError("Unknown sample(s) requested:",','.join(unknown_samples))
+
     selected_samples = samples
     if sample_list:
         selected_samples = [sample for sample in samples if sample["name"] in sample_list]
@@ -176,6 +197,7 @@ if __name__=="__main__":
     parser.add_argument("--dir", type=str, default="All_metaplots", help="output directory")
     parser.add_argument("--types", type=str, default=allowed_types, nargs='*', choices=allowed_types, help="plot types")
     parser.add_argument("--samples", type=str, default=[], nargs='*', help="list of samples to plot")
+    parser.add_argument("--study", type=str, default=[], nargs='+', help="study version + misc arguments (to select samples)")
     parser.add_argument("-x", type=str, default='rinvpred', help="x variable")
     parser.add_argument("--xlabel", type=str, default=None, help="x axis label")
     parser.add_argument("--forcex", type=str, default=None, help="force use of x values from specified sample")
@@ -183,8 +205,4 @@ if __name__=="__main__":
     parser.add_argument("--offset", type=int, default=0, help="offset for color/style cycler")
     args = parser.parse_args()
 
-    unknown_samples = [s for s in args.samples if not any([s==sm['name'] for sm in samples])]
-    if unknown_samples:
-        raise ValueError("Unknown sample(s) requested:",','.join(unknown_samples))
-
-    make_all_plots(args.dir, args.types, args.samples, args.x, args.y, args.xlabel, args.forcex, args.offset)
+    make_all_plots(args.dir, args.types, args.samples, args.study, args.x, args.y, args.xlabel, args.forcex, args.offset)
