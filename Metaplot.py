@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 import mplhep as hep
 import pickle
 from magiconfig import ArgumentParser, ArgumentDefaultsRawHelpFormatter
@@ -79,7 +80,7 @@ def process_data(data, x, qname, forcex):
     return processed
 
 # helper to make a plot
-def make_plot(type, data, x, xlabel, qname, outdir, offset):
+def make_plot(type, data, x, xlabel, qname, outdir, offset, plabel):
     fig, ax = plt.subplots(figsize=(8,6))
     # iterator for manual control
     props = iter(custom_cycler)
@@ -153,11 +154,14 @@ def make_plot(type, data, x, xlabel, qname, outdir, offset):
     if ylim: ax.set_ylim(*ylim)
     if ylabel is None: ylabel = qname
     ax.set_ylabel(ylabel)
-    ax.legend(framealpha=0.5)
+    handles, labels = ax.get_legend_handles_labels()
+    if plabel is not None:
+        handles.append(Rectangle((0,0), 1, 1, fc="w", fill=False, edgecolor="none", linewidth=0, label=plabel))
+    ax.legend(handles=handles, framealpha=0.5)
     plt.savefig(f'{outdir}/{type}_{qname}.pdf',bbox_inches='tight')
     plt.close(fig)
 
-def make_all_plots(outdir, types, sample_list, study, x, y, xlabel, forcex, offset):
+def make_all_plots(outdir, types, sample_list, study, x, y, xlabel, forcex, offset, plabel):
     samples = all_samples(study)
 
     unknown_samples = [s for s in sample_list if not any([s==sm['name'] for sm in samples])]
@@ -173,7 +177,7 @@ def make_all_plots(outdir, types, sample_list, study, x, y, xlabel, forcex, offs
     for qname in y:
         processed = process_data(data, x, qname, forcex)
         for plot_type in types:
-            make_plot(plot_type, processed, x, xlabel, qname, outdir, offset)
+            make_plot(plot_type, processed, x, xlabel, qname, outdir, offset, plabel)
 
 if __name__=="__main__":
     allowed_types = ['stat', 'violin']
@@ -203,6 +207,7 @@ if __name__=="__main__":
     parser.add_argument("--forcex", type=str, default=None, help="force use of x values from specified sample")
     parser.add_argument("-y", type=str, default=qtys_default, nargs='*', help="y variable(s)")
     parser.add_argument("--offset", type=int, default=0, help="offset for color/style cycler")
+    parser.add_argument("--plabel", type=str, default=None, help="plot label (e.g. model info)")
     args = parser.parse_args()
 
-    make_all_plots(args.dir, args.types, args.samples, args.study, args.x, args.y, args.xlabel, args.forcex, args.offset)
+    make_all_plots(args.dir, args.types, args.samples, args.study, args.x, args.y, args.xlabel, args.forcex, args.offset, args.plabel)
