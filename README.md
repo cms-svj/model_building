@@ -54,10 +54,13 @@ This command will, in order:
 2. generate the Pythia and Delphes cards for this configuration
 3. run Pythia
 4. run Delphes
-5. make histograms
+5. compute additional observables of the large-radius jets (N2, N3, and primary Lund-plane points) and save them in a friend tree (`events_friend.root`)
+6. merge the friend tree into the Delphes tree (`events_merged.root`)
+7. make histograms
 
-If the `--steps` command is omitted, items 3, 4, and 5 will be skipped (the default is just to generate the cards).
-Items 2, 3, 4, and 5 can be run separately by specifying just one of them in `--steps`.
+If the `--steps` command is omitted, items 3 through 7 will be skipped (the default is just to generate the cards).
+Items 2 through 7 can be run separately by specifying just one of them in `--steps`.
+Items 5 and 6 require jet constituents, so they are skipped if `--no-constituents` is used.
 
 The input model configuration can be modified using command-line arguments, and the resulting configuration file will be generated along with the Pythia and Delphes cards.
 
