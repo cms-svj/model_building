@@ -6,10 +6,16 @@ if [ "$PYTHIA8MINOR" -ge 12 ]; then
 	PYTHIA_EXE=main132
 fi
 
-wget "https://pythia.org/releases/pythia83/${PYTHIA_VERSION}.tgz"
-tar -xzf ${PYTHIA_VERSION}.tgz
-mv ${PYTHIA_VERSION} pythia8
-rm ${PYTHIA_VERSION}.tgz
+if [ ! -d pythia8 ]; then
+	wget "https://pythia.org/releases/pythia83/${PYTHIA_VERSION}.tgz"
+	if [ ! -e ${PYTHIA_VERSION}.tgz ]; then
+		echo "Failed to download pythia"
+		exit 1
+	fi
+	tar -xzf ${PYTHIA_VERSION}.tgz
+	mv ${PYTHIA_VERSION} pythia8
+	rm ${PYTHIA_VERSION}.tgz
+fi
 cd pythia8
 
 HEPMC_BASE=(/cvmfs/sft.cern.ch/lcg/releases/${LCG_VIEW}/hepmc3/*/${LCG_ARCH})

@@ -1,7 +1,15 @@
 #!/bin/bash
 
-git clone ${ACCESS_GITHUB}cms-svj/delphes -b DarkHadronJets
+git clone ${ACCESS_GITHUB}cms-svj/delphes
+
+if [ ! -d delphes ]; then
+	echo "Failed to clone delphes"
+	exit 1
+fi
+
 cd delphes
+git fetch origin
+git checkout DarkHadronJets
 
 make -j 8
 
