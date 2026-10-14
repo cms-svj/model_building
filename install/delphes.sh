@@ -9,7 +9,7 @@ fi
 
 cd delphes
 git fetch origin
-git checkout DarkHadronJets
+git checkout DarkHadronJets_3.5.2pre02
 
 make -j 8
 
