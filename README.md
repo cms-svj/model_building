@@ -11,8 +11,9 @@ cd model_building
 The `install.sh` script has a few options:
 ```
 Options:
+-e [external(s)]    (re)install specific external(s) (options = pythia8 python_packages delphes)
 -p [version]        Pythia8.3 minor version to install (default = 10)
--c [protocol]       use protocol to clone (default = ssh, alternative = https)
+-s [protocol]       use protocol to clone (default = ssh, alternative = https)
 -h                  print this message and exit
 ```
 
@@ -26,7 +27,7 @@ This repository is built on the [LCG 106](https://lcginfo.cern.ch/release_packag
 Important software versions:
 * Python 3.11.9
 * Pythia8 3.10
-* Delphes 3.5.1 (patched)
+* Delphes 3.5.2pre02 (patched)
 * HepMC 3.2.7
 * ROOT 6.32.02
 * numpy 1.26.4
