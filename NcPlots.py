@@ -11,16 +11,17 @@ from magiconfig import ArgumentParser, ArgumentDefaultsRawHelpFormatter
 from common import set_plot_style, resolve_models, accumulate_data
 
 samples = [
-    {"name": "FCDC Nc=3", "models": resolve_models("/eos/uscms/store/user/easmith/svj/models/fcdc/s-channel_mmed-1000_Nc-3_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*")},
-    {"name": "FCDC Nc=4", "models": resolve_models("/eos/uscms/store/user/easmith/svj/models/fcdc/s-channel_mmed-1000_Nc-4_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*")},
-    {"name": "FCDC Nc=5", "models": resolve_models("/eos/uscms/store/user/easmith/svj/models/fcdc/s-channel_mmed-1000_Nc-5_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*")},
-    {"name": "FCDC Nc=6", "models": resolve_models("/eos/uscms/store/user/easmith/svj/models/fcdc/s-channel_mmed-1000_Nc-6_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*")},
-    {"name": "FCDC Nc=7", "models": resolve_models("/eos/uscms/store/user/easmith/svj/models/fcdc/s-channel_mmed-1000_Nc-7_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*")},
-    {"name": "FCDC Nc=8", "models": resolve_models("/eos/uscms/store/user/easmith/svj/models/fcdc/s-channel_mmed-1000_Nc-8_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*")},
-    #{"name": "Simple", "models": resolve_models("/eos/uscms/store/user/easmith/svj/models/fcdc/s-channel_mmed-1000_Nc-3_Nf-3_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdcSimp_gq-0.25_gchi-0.333333_rinv-*")},
+    {"name": "FCDC Nc=3", "models": resolve_models("/store/user/easmith/svj/models/fcdc-extendedNcStudies/s-channel_mmed-1000_Nc-3_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*")},
+    {"name": "FCDC Nc=4", "models": resolve_models("/store/user/easmith/svj/models/fcdc-extendedNcStudies/s-channel_mmed-1000_Nc-4_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*")},
+    {"name": "FCDC Nc=5", "models": resolve_models("/store/user/easmith/svj/models/fcdc-extendedNcStudies/s-channel_mmed-1000_Nc-5_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*")},
+    {"name": "FCDC Nc=6", "models": resolve_models("/store/user/easmith/svj/models/fcdc-extendedNcStudies/s-channel_mmed-1000_Nc-6_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*")},
+    {"name": "FCDC Nc=7", "models": resolve_models("/store/user/easmith/svj/models/fcdc-extendedNcStudies/s-channel_mmed-1000_Nc-7_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*")},
+    {"name": "FCDC Nc=8", "models": resolve_models("/store/user/easmith/svj/models/fcdc-extendedNcStudies/s-channel_mmed-1000_Nc-8_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*")},
+    {"name": "Simple", "models": resolve_models("/store/user/easmith/svj/models/fcdc-extendedNcStudies/s-channel_mmed-1000_Nc-3_Nf-3_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdcSimp_gq-0.25_gchi-0.333333_rinv-*")},
 ]
 
 data = accumulate_data(samples)
+
 custom_cycler = set_plot_style()
 
 def make_plot(outdir, hname, nf_nc_ratio=None):
@@ -156,7 +157,7 @@ def make_violin_plots_rinv(outdir, hname):
     plt.close(fig)
 
 
-def make_band_plots(outdir, hname, rinv_decimals=2):
+def make_band_plots(outdir, hname, rinv_decimals=2, log=True):
     all_models = []
     for group_models in data.values():
         for md in group_models:
@@ -233,11 +234,13 @@ def make_band_plots(outdir, hname, rinv_decimals=2):
         ax.legend(handles=legend_handles, labels=legend_labels, framealpha=0.5)
         ax.set_xlabel(xlabel if xlabel else hname)
         ax.set_ylabel("Density")
-        ax.set_yscale('log')
+        if log:
+            ax.set_yscale('log')
         ax.set_xlim(bin_edges[0], bin_edges[-1])
         rinv_str = f'{rinv_bin:.2f}'.replace('.', 'p')
+        scale_str = '' if log else '_linear'
         plt.tight_layout()
-        plt.savefig(f'{band_dir}/band_rinv{rinv_str}_{hname}.png', bbox_inches='tight')
+        plt.savefig(f'{band_dir}/band_rinv{rinv_str}_{hname}{scale_str}.png', bbox_inches='tight')
         plt.close(fig)
 
 
@@ -337,7 +340,16 @@ def make_nc_rinv_comparison(outdir, hname):
     plt.close(fig)
 
 
-def make_all_plots(outdir):
+plot_types = {
+    "violin": make_violin_plots_rinv,
+    "band": make_band_plots,
+    "band_linear": lambda outdir, hname: make_band_plots(outdir, hname, log=False),
+    "single": make_plot,
+    "ratio": make_ratio_rinv_plots,
+    "comparison": make_nc_rinv_comparison,
+}
+
+def make_all_plots(outdir, plots=list(plot_types)):
     all_loaded = [md for group in data.values() for md in group]
     if not all_loaded:
         print("No models loaded — check that paths in samples are accessible.")
@@ -346,17 +358,14 @@ def make_all_plots(outdir):
     hnames = list(first_model['hist'].keys())
 
     for hname in hnames:
-        make_violin_plots_rinv(outdir, hname)
-        make_band_plots(outdir, hname)
-        make_plot(outdir, hname)
-        make_ratio_rinv_plots(outdir, hname)
-        make_nc_rinv_comparison(outdir, hname)
-        break
+        for plot in plots:
+            plot_types[plot](outdir, hname)
 
 if __name__=="__main__":
     parser = ArgumentParser(formatter_class=ArgumentDefaultsRawHelpFormatter)
     parser.add_argument("--dir", type=str, default="plots_AllNcNf_10k", help="output directory")
+    parser.add_argument("--plots", type=str, nargs='+', default=list(plot_types), choices=list(plot_types), help="plot types to make")
     args = parser.parse_args()
 
     os.makedirs(args.dir,exist_ok=True)
-    make_all_plots(args.dir)
+    make_all_plots(args.dir, args.plots)
