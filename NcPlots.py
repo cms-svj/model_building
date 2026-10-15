@@ -7,32 +7,20 @@ from matplotlib.patches import Patch
 import pickle
 import numpy as np
 import itertools
-import hist
 from magiconfig import ArgumentParser, ArgumentDefaultsRawHelpFormatter
 from common import set_plot_style, resolve_models, accumulate_data
 
 samples = [
-    {"name": "FCDC Nc=3", "models": resolve_models("/eos/uscms/store/user/easmith/svj/models/fcdc-extendedNcStudies/s-channel_mmed-1000_Nc-3_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*")},
-    {"name": "FCDC Nc=4", "models": resolve_models("/eos/uscms/store/user/easmith/svj/models/fcdc-extendedNcStudies/s-channel_mmed-1000_Nc-4_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*")},
-    {"name": "FCDC Nc=5", "models": resolve_models("/eos/uscms/store/user/easmith/svj/models/fcdc-extendedNcStudies/s-channel_mmed-1000_Nc-5_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*")},
-    {"name": "FCDC Nc=6", "models": resolve_models("/eos/uscms/store/user/easmith/svj/models/fcdc-extendedNcStudies/s-channel_mmed-1000_Nc-6_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*")},
-    {"name": "FCDC Nc=7", "models": resolve_models("/eos/uscms/store/user/easmith/svj/models/fcdc-extendedNcStudies/s-channel_mmed-1000_Nc-7_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*")},
-    {"name": "FCDC Nc=8", "models": resolve_models("/eos/uscms/store/user/easmith/svj/models/fcdc-extendedNcStudies/s-channel_mmed-1000_Nc-8_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*")},
-    {"name": "Simple", "models": resolve_models("/eos/uscms/store/user/easmith/svj/models/fcdc-extendedNcStudies/s-channel_mmed-1000_Nc-3_Nf-3_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdcSimp_gq-0.25_gchi-0.333333_rinv-*")},
+    {"name": "FCDC Nc=3", "models": resolve_models("/store/user/easmith/svj/models/fcdc-extendedNcStudies/s-channel_mmed-1000_Nc-3_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*")},
+    {"name": "FCDC Nc=4", "models": resolve_models("/store/user/easmith/svj/models/fcdc-extendedNcStudies/s-channel_mmed-1000_Nc-4_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*")},
+    {"name": "FCDC Nc=5", "models": resolve_models("/store/user/easmith/svj/models/fcdc-extendedNcStudies/s-channel_mmed-1000_Nc-5_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*")},
+    {"name": "FCDC Nc=6", "models": resolve_models("/store/user/easmith/svj/models/fcdc-extendedNcStudies/s-channel_mmed-1000_Nc-6_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*")},
+    {"name": "FCDC Nc=7", "models": resolve_models("/store/user/easmith/svj/models/fcdc-extendedNcStudies/s-channel_mmed-1000_Nc-7_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*")},
+    {"name": "FCDC Nc=8", "models": resolve_models("/store/user/easmith/svj/models/fcdc-extendedNcStudies/s-channel_mmed-1000_Nc-8_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*")},
+    {"name": "Simple", "models": resolve_models("/store/user/easmith/svj/models/fcdc-extendedNcStudies/s-channel_mmed-1000_Nc-3_Nf-3_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdcSimp_gq-0.25_gchi-0.333333_rinv-*")},
 ]
 
 data = accumulate_data(samples)
-
-# Histogram.py books e2 and e3 at 0.001 bin width over 0-1; e2 is too fine and e3 lives below ~0.05
-hist_fixes = {
-    "_e2": lambda h: h[::hist.rebin(5)],
-    "_e3": lambda h: h[:hist.loc(0.05)],
-}
-for md in (md for group in data.values() for md in group):
-    for hname, h in md['hist'].items():
-        for suffix, fix in hist_fixes.items():
-            if hname.endswith(suffix):
-                md['hist'][hname] = fix(h)
 
 custom_cycler = set_plot_style()
 

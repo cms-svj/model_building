@@ -222,7 +222,8 @@ def set_plot_style():
 EOS_REDIRECTOR = "root://cmseos.fnal.gov/"
 
 def resolve_models(pattern):
-    if "/eos" not in pattern:
+    # logical filenames (/store/...) are read from EOS via xrootd; anything else is a local path
+    if not pattern.startswith("/store"):
         return glob(pattern)
 
     directory, name_pattern = pattern.rsplit("/", 1)
@@ -231,7 +232,7 @@ def resolve_models(pattern):
     fs = xrootd_client.FileSystem(EOS_REDIRECTOR)
     status, listing = fs.dirlist(directory)
     if not status.ok:
-        raise RuntimeError(f"xrootd dirlist failed for {directory}: {status.message}")
+        raise RuntimeError(f"Couldn't read {directory} on EOS: {status.message}")
 
     matched_names = [entry.name for entry in listing.dirlist if fnmatch.fnmatch(entry.name, name_pattern)]
     if not matched_names:
@@ -244,11 +245,10 @@ def resolve_models(pattern):
         local_dir = f"{local_base}/{name}"
         status, model_listing = fs.dirlist(remote_dir)
         if not status.ok:
-            print(f"Couldn't read {remote_dir} on EOS, skipping: {status.message}")
-            continue
+            raise RuntimeError(f"Couldn't read {remote_dir} on EOS: {status.message}")
         pkl_names = [entry.name for entry in model_listing.dirlist if entry.name.endswith(".pkl")]
         if not pkl_names:
-            print(f"{remote_dir} doesn't have any .pkl files")
+            raise RuntimeError(f"{remote_dir} doesn't have any .pkl files")
         for fname in pkl_names:
             source = f"{EOS_REDIRECTOR}{remote_dir}/{fname}"
             dest = os.path.abspath(f"{local_dir}/{fname}")
