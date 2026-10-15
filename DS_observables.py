@@ -10,6 +10,9 @@ vector.register_awkward()
 # value stored for jets that cannot be assigned an observable (too few constituents, etc.)
 SENTINEL = -99.0
 
+# branches of the friend tree that get merged into the Delphes tree (used by run_model and passed to merge_trees.C)
+FRIEND_BRANCHES = ["FatJet_N2", "FatJet_N3", "FatJet_LundX", "FatJet_LundY"]
+
 
 def to_f32_jagged(arr):
     # Fill missing whole events with empty lists: None -> []
@@ -27,32 +30,16 @@ def to_f32_jagged(arr):
 def force_fatjet_layout(arr, FJ):
     arr = to_f32_jagged(arr)
 
-    # FatJet counts per event. Missing FatJet collections count as 0.
-    n_fatjet = ak.fill_none(ak.num(FJ, axis=1), 0)
-    n_fatjet = ak.to_numpy(ak.values_astype(n_fatjet, np.int64))
+    # position of each FatJet within its event, e.g. [[0, 1], [], [0], ...]
+    jet_index = ak.local_index(FJ, axis=1)
 
-    arr_list = ak.to_list(arr)
-    fixed = []
+    # pad every event to the longest list, so that every FatJet position exists in every event
+    longest = int(max(ak.max(ak.num(arr, axis=1), initial=0), ak.max(ak.num(FJ, axis=1), initial=0)))
+    padded = ak.pad_none(arr, longest, axis=1)
 
-    for iev, njet in enumerate(n_fatjet):
-        vals = arr_list[iev]
-        if vals is None:
-            vals = []
-        vals = list(vals)
-
-        # too many values: keep only the real FatJet entries
-        if len(vals) > njet:
-            vals = vals[:njet]
-
-        # too few values: pad with zeros
-        if len(vals) < njet:
-            vals = vals + [0.0] * (njet - len(vals))
-
-        fixed.append(vals)
-
-    fixed = ak.values_astype(ak.Array(fixed), np.float32)
-    return ak.to_packed(fixed)
-
+    # keep exactly one entry per FatJet (extra values are dropped), and fill the padding with zeros
+    fixed = ak.fill_none(padded[jet_index], 0.0)
+    return ak.to_packed(ak.values_astype(fixed, np.float32))
 
 def extract_ecf_value(ecf_array):
     flat = ak.to_numpy(ak.flatten(ecf_array, axis=None))
@@ -284,7 +271,7 @@ def calculate_primary_lund_xy_fastjet(FJ, R=0.8, min_jet_pt=20.0):
     return LundX, LundY, n_jets
 
 
-def make_friend_tree(root_fname, friend_fname, with_constituents=True):
+def make_friend_tree(root_fname, friend_fname, with_constituents=True, verbose=False):
     """
     Compute the additional dark-sector observables of the FatJets in root_fname
     (N2, N3 and the primary Lund-plane points) and write them to a "friend" tree
@@ -343,4 +330,5 @@ def make_friend_tree(root_fname, friend_fname, with_constituents=True):
             }
         )
 
-    print(f"Wrote friend tree with {n_evt} events and {n_jets} Lund jets: {friend_fname}")
+    if verbose:
+        print(f"Wrote friend tree with {n_evt} events and {n_jets} Lund jets: {friend_fname}")
