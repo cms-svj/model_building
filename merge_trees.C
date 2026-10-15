@@ -2,17 +2,28 @@
 #include "TTree.h"
 #include "TTreeReader.h"
 #include "TTreeReaderArray.h"
+#include "TSystem.h"
 #include <vector>
 #include <string>
 #include <memory>
 #include <iostream>
+#include <sstream>
+
+// Report failure to the caller: a plain "return" from a macro does not change the exit
+// status of `root -q`, so exit explicitly to let run_model detect the error and stop
+static int fail(int code) {
+  gSystem->Exit(code);
+  return code;
+}
 
 int merge_trees(
-  const char* fMain   = "events.root",
-  const char* fFriend = "events_friend.root",
-  const char* fOut    = "merged_tree.root",
-  const char* tMain   = "Delphes",
-  const char* tFr     = "DelphesFriend"
+  const char* fMain    = "events.root",
+  const char* fFriend  = "events_friend.root",
+  const char* fOut     = "merged_tree.root",
+  const char* branches = "",
+  bool        verbose  = false,
+  const char* tMain    = "Delphes",
+  const char* tFr      = "DelphesFriend"
 ) {
 
   // Open inputs
@@ -21,7 +32,7 @@ int merge_trees(
   std::unique_ptr<TFile> fm(TFile::Open(fMain));
   if (!fm || fm->IsZombie()) {
     std::cerr << "Cannot open " << fMain << "\n";
-    return 1;
+    return fail(1);
   }
 
   TTree* tm = (TTree*)fm->Get(tMain);
@@ -29,7 +40,7 @@ int merge_trees(
   std::unique_ptr<TFile> ff(TFile::Open(fFriend));
   if (!ff || ff->IsZombie()) {
     std::cerr << "Cannot open " << fFriend << "\n";
-    return 1;
+    return fail(1);
   }
 
   TTree* tf = (TTree*)ff->Get(tFr);
@@ -48,23 +59,31 @@ int merge_trees(
 
   if (!tm || !tf) {
     std::cerr << "Missing tree(s).\n";
-    return 2;
+    return fail(2);
   }
 
-  // --- Which friend branches to add (leaf-counted Float_t arrays) ---
-  const std::vector<std::string> want = {
-    "FatJet_N2", "FatJet_N3",
-    "FatJet_LundX", "FatJet_LundY"
-  };
+  // --- Which friend branches to add: comma-separated list given by the caller ---
+  std::vector<std::string> want;
+  {
+    std::stringstream ss(branches);
+    std::string item;
+    while (std::getline(ss, item, ',')) {
+      if (!item.empty()) want.push_back(item);
+    }
+  }
+  if (want.empty()) {
+    std::cerr << "No friend branches requested.\n";
+    return fail(5);
+  }
 
   // Readers
   TTreeReader rMain(tm);
   TTreeReader rFr(tf);
 
-  // Build readers for the subset that actually exists
+  // Build a reader for each requested branch; all of them must exist
   struct FriendItem {
-    std::string inName;                 // e.g. "FatJet_ptD"
-    std::string outName;                // e.g. "F_FatJet_ptD"
+    std::string inName;                 // e.g. "FatJet_N2"
+    std::string outName;                // e.g. "F_FatJet_N2"
     std::unique_ptr<TTreeReaderArray<Float_t>> rdr;  // leaf-counted array
     std::vector<float> buffer;          // output buffer
   };
@@ -72,8 +91,8 @@ int merge_trees(
   items.reserve(want.size());
   for (const auto& nm : want) {
     if (!tf->GetBranch(nm.c_str())) {
-      std::cerr << "[skip] friend branch not found: " << nm << "\n";
-      continue;
+      std::cerr << "Requested friend branch not found: " << nm << "\n";
+      return fail(6);
     }
     FriendItem it;
     it.inName  = nm;
@@ -81,16 +100,12 @@ int merge_trees(
     it.rdr     = std::make_unique<TTreeReaderArray<Float_t>>(rFr, nm.c_str());
     items.emplace_back(std::move(it));
   }
-  if (items.empty()) {
-    std::cerr << "No requested friend branches found; nothing to do.\n";
-    return 4;
-  }
 
   // --- Output: clone full Delphes structure, connect addresses to tm ---
   std::unique_ptr<TFile> fout(TFile::Open(fOut, "RECREATE"));
   if (!fout || fout->IsZombie()) {
     std::cerr << "Cannot create " << fOut << "\n";
-    return 3;
+    return fail(3);
   }
   TTree* tout = tm->CloneTree(0);   // clone structure only
   tout->SetName(tMain);             // keep familiar name
@@ -129,7 +144,9 @@ int merge_trees(
 
 
 //   fout.Write();
-  std::cout << "Wrote " << fOut << " with full Delphes + "
-            << items.size() << " friend branches (prefixed F_*)\n";
+    if (verbose) {
+    std::cout << "Wrote " << fOut << " with full Delphes + "
+              << items.size() << " friend branches (prefixed F_*)\n";
+  }
   return 0;
 }
