@@ -30,11 +30,6 @@ DelphesSchema.mixins.update({
 
 # workaround for https://cp3.irmp.ucl.ac.be/projects/delphes/ticket/1170
 # manually fix mass units
-#
-# Modified from the upstream version: not every ROOT file contains all of these collections
-# (for example GenStableCandidate or DarkPartonCandidate), and the original version failed
-# when one of them was missing. Now each collection, and its "Mass" field, is checked first,
-# and the unit conversion is only applied to the ones that exist.
 def fix_delphes_mass_units(events):
     GenParticleCollections = [
         "GenParticle",
@@ -44,9 +39,7 @@ def fix_delphes_mass_units(events):
         "DarkHadronCandidate",
     ]
     for col in GenParticleCollections:
-        if col in events.fields:
-            if "Mass" in events[col].fields:
-                events[col, "Mass"] = events[col]["Mass"]*0.001
+        events[col, "Mass"] = events[col]["Mass"]*0.001
     return events
 
 class DelphesSchema2(DelphesSchema):
@@ -155,27 +148,10 @@ def get_constituents(events, jetsname, candsname, chunk_size=500):
         DelphesSchema2.mixins[candsname]
     )
 
-# Modified from the upstream version: some jet collections (or their constituent collections)
-# may not exist in a given ROOT file, and the original version failed in that case.
-# Now each pair is checked first (jet collection, constituent collection, and the
-# "Constituents" field), and pairs that are not available are skipped with a message.
 def init_constituents(events):
-    for jet, const in DelphesSchema2.jet_const_pairs.items():
-
-        if jet not in events.fields:
-            print(f"Skipping {jet}: jet collection not found")
-            continue
-
-        if const not in events.fields:
-            print(f"Skipping {jet}: constituent collection {const} not found")
-            continue
-
-        if "Constituents" not in events[jet].fields:
-            print(f"Skipping {jet}: no Constituents field")
-            continue
-
-        events[jet, "ConstituentsOrig"] = events[jet, "Constituents"]
-        events[jet, "Constituents"] = get_constituents(events, jet, const)
+    for jet,const in DelphesSchema2.jet_const_pairs.items():
+        events[jet,"ConstituentsOrig"] = events[jet,"Constituents"]
+        events[jet,"Constituents"] = get_constituents(events,jet,const)
     return events
 
 # helper to test that all jet constituents were found
