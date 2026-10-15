@@ -659,11 +659,14 @@ class baseHelper():
         pass
 
     @classmethod
-    def build(cls,config_path):
+    def build(cls,config_path,obj_name=""):
         from magiconfig import ArgumentParser, MagiConfigOptions
-        parser = ArgumentParser(config_options=MagiConfigOptions())
+        parser = ArgumentParser(config_options=MagiConfigOptions(obj_args = ["-O"]))
         cls.add_arguments(parser)
-        args = parser.parse_args(['-C',config_path])
+        flags = ['-C',config_path]
+        if len(obj_name)>0:
+            flags.extend(['-O',obj_name])
+        args = parser.parse_args(flags)
         helper = cls(args)
         return helper
 
