@@ -1,0 +1,51 @@
+# Jet-radius scan: one job per (model point x event chunk), ALL radii inside.
+#
+# This is the key change from condor/focused_by_radius.sub, which queued one
+# job per radius over the same 10k events.  That layout recomputed the
+# radius-independent dark-hadron ancestry 15 times and copied events.root 15
+# times.  Sharding over events instead keeps the ancestry cost at 1x and lets
+# the job count grow with the campaign rather than being pinned at 15.
+#
+# The point table is the same format the signal-generation campaign already
+# uses (FlatSignal_generationcampaign/.../mass_points_*.txt), extended with
+# rinv and the remaining dark-sector parameters.  Reusing that convention means
+# generation and analysis are indexed by the same point_id.
+
+universe                = vanilla
++DesiredOS              = "EL9"
++JobFlavour             = "workday"
++JobBatchName           = "svj_radius_scan"
+
+Executable              = /bin/bash
+Arguments               = scan_worker.sh $(POINT_ID) $(CHUNK) points.txt $(RADII) $(EOS_OUT)
+
+Should_Transfer_Files   = YES
+WhenToTransferOutput    = ON_EXIT
+Transfer_Input_Files    = scan_worker.sh, payload.tgz, points.txt
+Transfer_Output_Files   = ""
+
+Output                  = logs/scan_$(Cluster)_$(POINT_ID)_c$(CHUNK).out
+Error                   = logs/scan_$(Cluster)_$(POINT_ID)_c$(CHUNK).err
+Log                     = logs/scan_$(Cluster).log
+
+# Measured peak on the 10k-event focused jobs was 934-1007 MB against an
+# 8000 MB request, and 2.28 GB disk against 8 GB.  Over-requesting by 8x
+# directly cuts how many LPC slots you match.  These are sized at roughly 2x
+# observed peak, which is the right amount of headroom.
+request_cpus            = 1
+request_memory          = 2000 MB
+request_disk            = 4000 MB
+
+notification            = Never
+on_exit_hold            = (ExitBySignal == True) || (ExitCode != 0)
+periodic_release        = (HoldReasonCode =!= 1) && (NumJobStarts < 3) && \
+                          ((CurrentTime - EnteredCurrentStatus) > 600)
+
+# Throttle materialisation so a 40k-point campaign does not melt the schedd.
+max_idle                = 500
+max_materialize         = 2000
+
+RADII                   = 0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4,1.5,1.6
+EOS_OUT                 = /store/user/$ENV(USER)/DarkSectorStudies/RadiusScan
+
+Queue POINT_ID, CHUNK from jobs.txt
