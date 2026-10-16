@@ -1,19 +1,22 @@
 #!/bin/bash
 
-if [ -z "$PYTHIA8MINOR" ]; then
-	export PYTHIA8MINOR=10
-fi
-
 PYTHIA_VERSION=pythia83${PYTHIA8MINOR}
 PYTHIA_EXE=main42
 if [ "$PYTHIA8MINOR" -ge 12 ]; then
 	PYTHIA_EXE=main132
 fi
 
-wget "https://pythia.org/releases/pythia83/${PYTHIA_VERSION}.tgz"
-tar -xzf ${PYTHIA_VERSION}.tgz
-mv ${PYTHIA_VERSION} pythia8
-rm ${PYTHIA_VERSION}.tgz
+if [ ! -d pythia8 ] || [[ "$PYTHIA8MINOR" != "$(source pythia8/mb_init.sh && echo "$PYTHIA8MINOR")" ]]; then
+	rm -rf pythia8
+	wget "https://pythia.org/releases/pythia83/${PYTHIA_VERSION}.tgz"
+	if [ ! -e ${PYTHIA_VERSION}.tgz ]; then
+		echo "Failed to download pythia"
+		exit 1
+	fi
+	tar -xzf ${PYTHIA_VERSION}.tgz
+	mv ${PYTHIA_VERSION} pythia8
+	rm ${PYTHIA_VERSION}.tgz
+fi
 cd pythia8
 
 HEPMC_BASE=(/cvmfs/sft.cern.ch/lcg/releases/${LCG_VIEW}/hepmc3/*/${LCG_ARCH})

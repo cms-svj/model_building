@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 import mplhep as hep
 import pickle
 from magiconfig import ArgumentParser, ArgumentDefaultsRawHelpFormatter
@@ -11,18 +12,33 @@ from glob import glob
 import itertools
 from common import set_plot_style, accumulate_data
 
-samples = [
-    {"name": "FCDC", "models": glob("models/fcdc/s-channel_mmed-1000_Nc-*_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*_Ns-*")},
-    {"name": "simp", "models": glob("models/fcdc/s-channel_mmed-1000_Nc-3_Nf-3_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdcSimp_gq-0.25_gchi-0.333333_rinv-*")},
-    {"name": "FCDC (3-body)", "models": glob("models/fcdc/s-channel_mmed-1000_Nc-*_Nf-*_scale-3.52941_mq-3.8666_mpi-6_mrho-11.2139_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*_Ns-*")},
-    {"name": "simp (3-body)", "models": glob("models/fcdc/s-channel_mmed-1000_Nc-3_Nf-3_scale-3.52941_mq-3.8666_mpi-6_mrho-11.2139_pvector-0.333_spectrum-fcdcSimp_gq-0.25_gchi-0.333333_rinv-*")},
-]
-# account for two complete models with rinv=0.75
-for sample in samples:
-    if "simp" in sample["name"]:
-        idx = next((i for i, val in enumerate(sample["models"]) if 'rinv-0.75' in val), None)
-        if idx is not None:
-            sample["models"].insert(idx+1, sample["models"][idx])
+def all_samples(study):
+    samples = []
+    study_version = int(study[0])
+    if study_version==1:
+        samples = [
+            {"name": "FCDC", "models": glob("models/fcdc/s-channel_mmed-1000_Nc-*_Nf-*_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*_Ns-*")},
+            {"name": "simp", "models": glob("models/fcdc/s-channel_mmed-1000_Nc-3_Nf-3_scale-10_mq-10.119_mpi-6_mrho-25.0998_pvector-0.333_spectrum-fcdcSimp_gq-0.25_gchi-0.333333_rinv-*")},
+            {"name": "FCDC (3-body)", "models": glob("models/fcdc/s-channel_mmed-1000_Nc-*_Nf-*_scale-3.52941_mq-3.8666_mpi-6_mrho-11.2139_pvector-0.333_spectrum-fcdc_gq-0.25_gchi-*_Ns-*")},
+            {"name": "simp (3-body)", "models": glob("models/fcdc/s-channel_mmed-1000_Nc-3_Nf-3_scale-3.52941_mq-3.8666_mpi-6_mrho-11.2139_pvector-0.333_spectrum-fcdcSimp_gq-0.25_gchi-0.333333_rinv-*")},
+        ]
+    elif study_version==2:
+        model = study[1]
+        samples = [
+            {"name": "FCDC", "models": glob(f"models/fcdc_var/comp_{model}/*/")},
+            {"name": "simp", "models": glob(f"models/fcdc_var/simp_{model}/*/")},
+        ]
+    else:
+        raise ValueError(f"Unknown study version {study_version}")
+
+    # account for two complete models with rinv=0.75
+    for sample in samples:
+        if "simp" in sample["name"]:
+            idx = next((i for i, val in enumerate(sample["models"]) if 'rinv-0.75' in val), None)
+            if idx is not None:
+                sample["models"].insert(idx+1, sample["models"][idx])
+
+    return samples
 
 custom_cycler = set_plot_style()
 
@@ -64,7 +80,7 @@ def process_data(data, x, qname, forcex):
     return processed
 
 # helper to make a plot
-def make_plot(type, data, x, xlabel, qname, outdir, offset):
+def make_plot(type, data, x, xlabel, qname, outdir, offset, plabel):
     fig, ax = plt.subplots(figsize=(8,6))
     # iterator for manual control
     props = iter(custom_cycler)
@@ -138,11 +154,20 @@ def make_plot(type, data, x, xlabel, qname, outdir, offset):
     if ylim: ax.set_ylim(*ylim)
     if ylabel is None: ylabel = qname
     ax.set_ylabel(ylabel)
-    ax.legend(framealpha=0.5)
+    handles, labels = ax.get_legend_handles_labels()
+    if plabel is not None:
+        handles.append(Rectangle((0,0), 1, 1, fc="w", fill=False, edgecolor="none", linewidth=0, label=plabel))
+    ax.legend(handles=handles, framealpha=0.5)
     plt.savefig(f'{outdir}/{type}_{qname}.pdf',bbox_inches='tight')
     plt.close(fig)
 
-def make_all_plots(outdir, types, sample_list, x, y, xlabel, forcex, offset):
+def make_all_plots(outdir, types, sample_list, study, x, y, xlabel, forcex, offset, plabel):
+    samples = all_samples(study)
+
+    unknown_samples = [s for s in sample_list if not any([s==sm['name'] for sm in samples])]
+    if unknown_samples:
+        raise ValueError("Unknown sample(s) requested:",','.join(unknown_samples))
+
     selected_samples = samples
     if sample_list:
         selected_samples = [sample for sample in samples if sample["name"] in sample_list]
@@ -152,7 +177,7 @@ def make_all_plots(outdir, types, sample_list, x, y, xlabel, forcex, offset):
     for qname in y:
         processed = process_data(data, x, qname, forcex)
         for plot_type in types:
-            make_plot(plot_type, processed, x, xlabel, qname, outdir, offset)
+            make_plot(plot_type, processed, x, xlabel, qname, outdir, offset, plabel)
 
 if __name__=="__main__":
     allowed_types = ['stat', 'violin']
@@ -176,15 +201,13 @@ if __name__=="__main__":
     parser.add_argument("--dir", type=str, default="All_metaplots", help="output directory")
     parser.add_argument("--types", type=str, default=allowed_types, nargs='*', choices=allowed_types, help="plot types")
     parser.add_argument("--samples", type=str, default=[], nargs='*', help="list of samples to plot")
+    parser.add_argument("--study", type=str, default=[], nargs='+', help="study version + misc arguments (to select samples)")
     parser.add_argument("-x", type=str, default='rinvpred', help="x variable")
     parser.add_argument("--xlabel", type=str, default=None, help="x axis label")
     parser.add_argument("--forcex", type=str, default=None, help="force use of x values from specified sample")
     parser.add_argument("-y", type=str, default=qtys_default, nargs='*', help="y variable(s)")
     parser.add_argument("--offset", type=int, default=0, help="offset for color/style cycler")
+    parser.add_argument("--plabel", type=str, default=None, help="plot label (e.g. model info)")
     args = parser.parse_args()
 
-    unknown_samples = [s for s in args.samples if not any([s==sm['name'] for sm in samples])]
-    if unknown_samples:
-        raise ValueError("Unknown sample(s) requested:",','.join(unknown_samples))
-
-    make_all_plots(args.dir, args.types, args.samples, args.x, args.y, args.xlabel, args.forcex, args.offset)
+    make_all_plots(args.dir, args.types, args.samples, args.study, args.x, args.y, args.xlabel, args.forcex, args.offset, args.plabel)
