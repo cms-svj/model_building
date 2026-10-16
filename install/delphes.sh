@@ -9,6 +9,11 @@ fi
 
 cd delphes
 git fetch origin
+FETCH_EXIT=$?
+if [ "$FETCH_EXIT" -ne 0 ]; then
+	echo "Failed to fetch delphes"
+	exit 1
+fi
 git checkout DarkHadronJets_3.5.2pre02
 
 make -j 8

@@ -55,8 +55,6 @@ else
 	usage 1
 fi
 
-exit 0
-
 cd install
 
 for EXTERNAL in $REINSTALL_EXTERNALS; do

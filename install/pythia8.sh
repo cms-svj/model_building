@@ -6,7 +6,8 @@ if [ "$PYTHIA8MINOR" -ge 12 ]; then
 	PYTHIA_EXE=main132
 fi
 
-if [ ! -d pythia8 ]; then
+if [ ! -d pythia8 ] || [[ "$PYTHIA8MINOR" != "$(source pythia8/mb_init.sh && echo "$PYTHIA8MINOR")" ]]; then
+	rm -rf pythia8
 	wget "https://pythia.org/releases/pythia83/${PYTHIA_VERSION}.tgz"
 	if [ ! -e ${PYTHIA_VERSION}.tgz ]; then
 		echo "Failed to download pythia"
