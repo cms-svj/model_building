@@ -27,7 +27,7 @@ def run_cmd(cmd,log,verbose=False,shell=False):
 # patterns = [(in,out),(in,out)]
 # currently doesn't handle regex
 def pysed(line, patterns):
-    for pattern,replace in patterns.items():
+    for pattern,replace in patterns:
         line = line.replace(pattern,replace)
     return line
 
