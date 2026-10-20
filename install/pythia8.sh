@@ -6,16 +6,9 @@ if [ "$PYTHIA8MINOR" -ge 12 ]; then
 	PYTHIA_EXE=main132
 fi
 
-# move an old unversioned install to its versioned location
+# remove an old unversioned install (it can't be moved: its library rpath points to install/pythia8/lib)
 if [ -d pythia8 ] && [ ! -L pythia8 ]; then
-	if [ -f pythia8/mb_init.sh ]; then
-		OLD_VERSION=pythia83$(source pythia8/mb_init.sh && echo "$PYTHIA8MINOR")
-		mv pythia8 ${OLD_VERSION}
-		sed -i "s|/install/pythia8$|/install/${OLD_VERSION}|" ${OLD_VERSION}/mb_init.sh
-	else
-		# incomplete install
-		rm -rf pythia8
-	fi
+	rm -rf pythia8
 fi
 
 if [ ! -d ${PYTHIA_VERSION} ]; then
