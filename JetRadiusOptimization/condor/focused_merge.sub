@@ -1,0 +1,29 @@
+# Merge job for focused_by_radius.dag: collects the 15 per-radius outputs.
+universe = vanilla
++DesiredOS = "EL9"
++JobFlavour = "workday"
++JobBatchName = "cms_10k_focused_merge"
+
+EOS_BASE   = /store/user/$ENV(USER)/DarkSectorStudies/Analysis/cms_10k_radius_study/point-00000_mdark-20_shard-00/jet_radius_validation
+JRO        = JetRadiusOptimization
+
+Executable = /bin/bash
+Arguments = focused_merge_worker.sh $(EOS_BASE)/radius_jobs $(EOS_BASE)
+
+Should_Transfer_Files = YES
+WhenToTransferOutput = ON_EXIT
+Transfer_Input_Files = $(JRO)/condor/focused_merge_worker.sh, $(JRO)/merge_focused_diagnostics.py
+Transfer_Output_Files = ""
+
+Output = $(JRO)/condor/logs/focused_merge_$(Cluster)_$(Process).out
+Error  = $(JRO)/condor/logs/focused_merge_$(Cluster)_$(Process).err
+Log    = $(JRO)/condor/logs/focused_merge_$(Cluster)_$(Process).log
+
+request_cpus   = 1
+request_memory = 4000 MB
+request_disk   = 4000 MB
+
+notification = Never
+on_exit_hold = (ExitBySignal == True) || (ExitCode != 0)
+
+Queue 1

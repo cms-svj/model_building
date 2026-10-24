@@ -1,0 +1,49 @@
+# Fifteen independent one-radius jobs for the 10,000-event diagnostic scan.
+# Submitted through focused_by_radius.dag; see condor/README.md.
+universe = vanilla
++DesiredOS = "EL9"
++JobFlavour = "workday"
++JobBatchName = "cms_10k_focused_by_radius"
+
+SHARD      = /store/user/$ENV(USER)/DarkSectorStudies/MC/cms_10k_radius_study/point-00000_mdark-20_shard-00
+INPUT_URL  = root://cmseos.fnal.gov/$(SHARD)/events.root
+EOS_JOBS   = /store/user/$ENV(USER)/DarkSectorStudies/Analysis/cms_10k_radius_study/point-00000_mdark-20_shard-00/jet_radius_validation/radius_jobs
+MAX_EVENTS = 10000
+JRO        = JetRadiusOptimization
+
+Executable = /bin/bash
+Arguments = focused_radius_worker.sh $(INPUT_URL) $(EOS_JOBS) $(radius) $(radius_index) $(MAX_EVENTS)
+
+Should_Transfer_Files = YES
+WhenToTransferOutput = ON_EXIT
+Transfer_Input_Files = $(JRO)/condor/focused_radius_worker.sh, $(JRO)/condor/model_building_transfer, $(JRO)/focused_diagnostics.py, $(JRO)/core.py, $(JRO)/ancestry.py
+Transfer_Output_Files = ""
+
+Output = $(JRO)/condor/logs/focused_$(Cluster)_$(Process)_R$(radius).out
+Error  = $(JRO)/condor/logs/focused_$(Cluster)_$(Process)_R$(radius).err
+Log    = $(JRO)/condor/logs/focused_$(Cluster)_R$(radius).log
+
+request_cpus   = 1
+request_memory = 8000 MB
+request_disk   = 8000 MB
+
+notification = Never
+on_exit_hold = (ExitBySignal == True) || (ExitCode != 0)
+
+Queue radius, radius_index from (
+0.2 0
+0.3 1
+0.4 2
+0.5 3
+0.6 4
+0.7 5
+0.8 6
+0.9 7
+1.0 8
+1.1 9
+1.2 10
+1.3 11
+1.4 12
+1.5 13
+1.6 14
+)
