@@ -1,11 +1,10 @@
-import fastjet
 import awkward as ak
 import pickle
 import numpy as np
 import hist
 import matplotlib as mpl
 import os
-from DS_observables import SENTINEL
+from DS_observables import SENTINEL, JET_SUBSTRUCTURE, KT_CUTS, DR_PCTS
 from coffea.nanoevents import NanoEventsFactory
 from common import load_events
 from collections import defaultdict
@@ -15,93 +14,15 @@ from scipy.stats import sem
 def ET(vec):
     return np.sqrt(vec.px**2+vec.py**2+vec.mass**2)
 
-def deltaR(jet):
-    return jet.deltaR(jet.Constituents)
-
-def calculate_girth(jet):
-    particle_dR = deltaR(jet)
-    girth = ak.sum(jet.Constituents.pt * particle_dR, axis=-1)
-    girth = np.divide(girth,jet.pt) #normalize wrt jet pt
-    return girth
-
-def calculate_ptD(jet):
-    sum_pt = ak.sum(jet.Constituents.pt,axis=-1)
-    sum_pt2 = ak.sum(jet.Constituents.pt ** 2,axis=-1)
-    ptD = np.sqrt(sum_pt2) / sum_pt
-
-    # Return the result (ptD)
-    return ptD
-
-def calc_axis1_axis2(jet):
-    jet_constpt = jet.Constituents.pt
-    deta_particle = np.abs(jet.eta-jet.Constituents.eta)
-    dphi_particle = np.abs(jet.deltaphi(jet.Constituents))
-
-    # Calculate weights (pt^2) for each constituent
-    weights_pt = jet_constpt**2
-
-    # Calculate weighted sums for each event
-    sum_weight = ak.sum(weights_pt, axis=-1)  # Sum of weights (pt^2) for each event
-
-    sum_deta = ak.sum(deta_particle * weights_pt, axis=-1)
-    sum_dphi = ak.sum(dphi_particle * weights_pt, axis=-1)
-    sum_deta2 = ak.sum(deta_particle**2 * weights_pt, axis=-1)
-    sum_dphi2 = ak.sum(dphi_particle**2 * weights_pt, axis=-1)
-    sum_detadphi = ak.sum(deta_particle * dphi_particle * weights_pt, axis=-1)
-
-    # Calculate averages
-    ave_deta = sum_deta / sum_weight
-    ave_dphi = sum_dphi / sum_weight
-    ave_deta2 = sum_deta2 / sum_weight
-    ave_dphi2 = sum_dphi2 / sum_weight
-
-    # Calculate covariance matrix components
-    a = ave_deta2 - ave_deta**2
-    b = ave_dphi2 - ave_dphi**2
-    c = -(sum_detadphi / sum_weight - ave_deta * ave_dphi)
-
-    # Calculate the discriminant (delta) for each jet
-    delta = np.sqrt(np.abs((a - b)**2 + 4 * c**2))
-
-    # Calculate axis1 (major) and axis2 (minor) for each jet
-    axis1 = np.sqrt(0.5 * (a + b + delta))
-    axis2 = np.sqrt(0.5 * (a + b - delta))
-
-    return axis1, axis2
-
-def getTau(events):
-    # we have tau1 to tau5
+def getTau(events, pre=""):
+    # we have tau1 to tau5, calculated by Delphes; pre selects the jet collection ("" is the reco FatJet)
     for i in range(1,6):
-        events[f"Jet12_tau{i}"] = events["Jet12"].Tau_5[:,:,i-1]
-        if i != 1: events[f"Jet12_tau{i}{i-1}"] = events[f"Jet12_tau{i}"] / events[f"Jet12_tau{i-1}"]
+        tau = events[f"{pre}Jet12"].Tau_5[:,:,i-1]
+        # tau_N is exactly 0 for a jet with N or fewer constituents: that is not a measurement, so it is masked
+        # (as for N2 and N3). The ratios below are then undefined too, instead of 0.
+        events[f"{pre}Jet12_tau{i}"] = ak.mask(tau, tau != 0)
+        if i != 1: events[f"{pre}Jet12_tau{i}{i-1}"] = events[f"{pre}Jet12_tau{i}"] / events[f"{pre}Jet12_tau{i-1}"]
     return events
-
-def fj_cluster_sequence(jets):
-    # Re-cluster the constituents with Cambridge/Aachen.
-    # Using a very large R guarantees a single C/A jet containing all constituents
-    jet_def = fastjet.JetDefinition(fastjet.cambridge_algorithm, 1000.0)
-    # Jets with zero constituents (e.g. DHV jets whose dark hadrons were all stable) cause issues
-    # to_packed is required: fastjet clusters the whole underlying buffer, ignoring masks/slices
-    # so the empty jets must be removed from it.
-    # Masking via indices (not ak.mask on jets directly) guarantees an
-    # IndexedOptionArray, which to_packed compacts even when the input has no Nones yet
-    nonempty = ak.fill_none(ak.num(jets.Constituents, axis=1) > 0, False)
-    jets = jets[ak.mask(ak.local_index(jets, axis=0), nonempty)]
-    cs = fastjet.ClusterSequence(ak.to_packed(jets.Constituents), jet_def)
-    return cs
-
-def getLundMultiplicity(cluster_seq, kt = 1):
-    # Retrieve the primary Lund-plane declusterings for the single jet and apply kt cut
-    lund = cluster_seq.exclusive_jets_lund_declusterings(njets=1)
-    # firsts, not flatten: both strip the njets=1 axis, but flatten drops padded
-    # None jets entirely, which breaks the unflatten back to (event, jet)
-    kt_values = ak.firsts(lund)["kt"]
-    mult = ak.sum(kt_values > kt, axis=-1)
-    return mult
-
-def getECF(cluster_seq, **kwargs):
-    ecf = cluster_seq.exclusive_jets_energy_correlator(njets=1, beta=1, **kwargs)
-    return ecf
 
 def ak_isin(arr, allowed):
     arr_ak = ak.Array(arr)
@@ -378,22 +299,6 @@ def proj(events, a, b):
 def proj_jet(events, jet, const):
     return proj(events, jet, [jet, const])
 
-def jet_const_cumsum(array):
-    counts = ak.num(array, axis=-1)
-    flat_counts = ak.flatten(counts, axis=None)
-    flat_array = ak.flatten(array, axis=None)
-    global_cumsum = np.cumsum(flat_array)
-    offsets = np.zeros(len(flat_counts)+1, dtype=int)
-    offsets[1:] = np.cumsum(flat_counts)
-    start_sums = np.zeros_like(global_cumsum)
-    prev_tot = np.zeros(len(flat_counts))
-    prev_tot[1:] = global_cumsum[offsets[1:-1]-1]
-    subtractions = np.repeat(prev_tot, flat_counts)
-    # unflatten in two stages
-    per_jet_flat = global_cumsum - subtractions
-    jets_unflat = ak.unflatten(per_jet_flat, flat_counts)
-    return ak.unflatten(jets_unflat, ak.num(counts, axis=1))
-
 def fill_stats(array):
     nparray = ak.to_numpy(ak.drop_none(ak.nan_to_none(ak.flatten(array, axis=None))))
     return {
@@ -406,25 +311,26 @@ def fill_stats(array):
 def histogram(filename, helper, with_constituents=True, gen_only=False, debug=False, merged_filename=None):
     # use the merged file (Delphes + additional observables) if available, otherwise the plain Delphes file
     have_extra = (merged_filename is not None and os.path.exists(merged_filename)
-                  and with_constituents and not gen_only)
+                  and with_constituents)
     events = load_events(merged_filename if have_extra else filename, with_constituents=with_constituents)
     if not have_extra:
-        print("Skipping histograms of the additional observables (observables step not run, merge skipped, or no constituents)")
+        print("Skipping the jet substructure histograms (observables step not run, merge skipped, or no constituents)")
 
 
     # output dictionary with histograms and metadata
     output = {}
     meta_dict = {}
 
-    # substructure settings, shared by all jet collections
-    kt_cuts = [1,2,5,10]
-    # name: (fastjet energy_correlator kwargs, label, binning); default func gives normalized e_n
-    ecfs = {
-        "e2": (dict(npoint=2), r"$e_2^{(\beta=1)}$", (200,0,1)),
-        "e3": (dict(npoint=3), r"$e_3^{(\beta=1)}$", (400,0,0.2)),
-        "C2": (dict(func="c2"), r"$C_2^{(\beta=1)}$", (150,0,1.5)),
-        "D2": (dict(func="d2"), r"$D_2^{(\beta=1)}$", (200,0,20)),
-        "N2": (dict(func="n2"), r"$N_2^{(\beta=1)}$", (50,0,0.5)),
+    # substructure settings, shared by all jet collections (the observables are calculated in DS_observables.py)
+    kt_cuts = KT_CUTS
+    # name: (label, binning)
+    ecf_hists = {
+        "e2": (r"$e_2^{(\beta=1)}$", (200,0,1)),
+        "e3": (r"$e_3^{(\beta=1)}$", (400,0,0.2)),
+        "C2": (r"$C_2^{(\beta=1)}$", (150,0,1.5)),
+        "D2": (r"$D_2^{(\beta=1)}$", (200,0,20)),
+        "N2": (r"$N_2^{(\beta=1)}$", (50,0,0.5)),
+        "N3": (r"$N_3^{(\beta=1)}$", (50,0,5)),
     }
 
     # get rid of None Events
@@ -464,17 +370,6 @@ def histogram(filename, helper, with_constituents=True, gen_only=False, debug=Fa
 
         events["DeltaPhi_MET_Jet12"] = np.abs(events.MissingET.deltaphi(events["Jet12"]))
 
-        events["Jet12_sdmass"] = events["Jet12"].SoftDroppedJet.mass
-        events["Jet12_sdpt"] = events["Jet12"].SoftDroppedJet.pt
-
-        events = getTau(events)
-
-        if have_extra:
-            # N2, N3 of the two leading jets, same layout as Jet12; jets without a value (sentinel) are masked out
-            for name in ["N2", "N3"]:
-                values = events[f"F_FatJet_{name}"][:, 0:2]
-                events[f"DSJet12_{name}"] = ak.mask(values, values != SENTINEL)
-
 
     # gen-level info
     pid = events.GenParticle["PID"]
@@ -503,11 +398,21 @@ def histogram(filename, helper, with_constituents=True, gen_only=False, debug=Fa
     events["DHVJet12"] = ak.pad_none(events.DarkHadronVisibleJet[:,0:2], target=2, axis=1)
     events["DHIVJet12"] = ak.pad_none(events.DarkHadronStableJet[:,0:2], target=2, axis=1)
     dhj_pre = ["DP", "DH", "DHV", "DHIV"]
-    # substructure is computed for every jet collection; reco ("") only exists without gen_only
+    # substructure is available for every jet collection; reco ("") only exists without gen_only
     jet_pre = ([""] if not gen_only else []) + dhj_pre
+    # jet collection of each prefix, to read its substructure observables from the merged file
+    jet_collection = {"": "FatJet", "DP": "DarkPartonJet", "DH": "DarkHadronJet", "DHV": "DarkHadronVisibleJet", "DHIV": "DarkHadronStableJet"}
     jet_inds = [0, 1, slice(0, 2)]
     jet_ind_names = ["1","2","1,2"]
     jet_ind_keys = ["1","2","12"]
+    # legend label of each jet collection
+    jet_label = {"": "reco", "DP": "DP", "DH": "DH", "DHV": "vis", "DHIV": "stable"}
+
+    # soft-drop and N-subjettiness (tau) of the two leading jets, already calculated by Delphes for every jet collection
+    for pre in jet_pre:
+        events[f"{pre}Jet12_sdmass"] = events[f"{pre}Jet12"].SoftDroppedJet.mass
+        events[f"{pre}Jet12_sdpt"] = events[f"{pre}Jet12"].SoftDroppedJet.pt
+        events = getTau(events, pre)
 
     if with_constituents:
         # per-jet calculation of invisible fraction based on momentum projection
@@ -552,46 +457,24 @@ def histogram(filename, helper, with_constituents=True, gen_only=False, debug=Fa
         shape_denom = events["DHIVJet12"].Constituents.pt
         fill_DHIVJet_rinv(shape_numer, shape_denom, 'shape')
 
-        # jet substructure and radius
-        dr_pcts = [90,95,99]
-        for pre in jet_pre:
-            print(f"\n{pre}Jet")
+        # jet substructure and radius: calculated in the observables step (DS_observables.py), read from the merged file
+        dr_pcts = DR_PCTS
+        if have_extra:
+            for pre in jet_pre:
+                print(f"\n{pre}Jet")
 
-            events[f"{pre}Jet12_girth"] = calculate_girth(events[f"{pre}Jet12"])
-            events[f"{pre}Jet12_ptD"] = calculate_ptD(events[f"{pre}Jet12"])
-            # axis=2, not -1: reco constituents have a ragged Particles field, so -1 overshoots
-            events[f"{pre}Jet12_nconst"] = ak.num(events[f"{pre}Jet12"].Constituents, axis=2)
-            events[f"{pre}Jet12_majoraxis"], events[f"{pre}Jet12_minoraxis"] = calc_axis1_axis2(events[f"{pre}Jet12"])
+                # the two leading jets, padded to exactly two as Jet12; jets without a value (sentinel) are masked out
+                for name in JET_SUBSTRUCTURE:
+                    values = events[f"F_{jet_collection[pre]}_{name}"]
+                    events[f"{pre}Jet12_{name}"] = ak.pad_none(ak.mask(values, values != SENTINEL), target=2, axis=1)
 
-            jet12_shape = ak.num(events[f"{pre}Jet12"], axis=1)
-            cs = fj_cluster_sequence(ak.flatten(events[f"{pre}Jet12"], axis=1))
-            for k in kt_cuts:
-                events[f"{pre}Jet12_lundMult{k}"] = ak.unflatten(getLundMultiplicity(cs, kt = k), jet12_shape)
-            for name, (kwargs, _, _) in ecfs.items():
-                events[f"{pre}Jet12_{name}"] = ak.unflatten(getECF(cs, **kwargs), jet12_shape)
-
-            # pt-weighted percentile per jet
-            # scalar sum of constituent pT within DeltaR / scalar sum of all constituent pT = "jet shape"
-            for pct in dr_pcts:
-                none_mask = ak.is_none(events[f"{pre}Jet12"], axis=1)
-                const_prop = ak.zip({
-                    'dr': deltaR(events[f"{pre}Jet12"]),
-                    'pt': events[f"{pre}Jet12"].Constituents.pt,
-                })[~none_mask]
-                sort_indices = ak.argsort(const_prop.dr, axis=-1)
-                sorted_prop = const_prop[sort_indices]
-                cumul_pt = jet_const_cumsum(sorted_prop.pt)
-                # last element of sum is total from all constituents
-                total_pt = ak.fill_none(ak.pad_none(cumul_pt, 1, axis=-1)[:, :, -1], 0)
-                target_pt = pct/100 * total_pt
-                mask_pt = cumul_pt >= target_pt
-                events[f"{pre}Jet12_radius{pct}"] = ak.pad_none(ak.firsts(sorted_prop[mask_pt].dr, axis=-1), target=2, axis=1)
-                for ind,key in zip(jet_inds, jet_ind_keys):
-                    r_pct_pt = events[f"{pre}Jet12_radius{pct}"][:, ind]
-                    meta_dict[f"{pre}Jet{key}_radius{pct}"] = fill_stats(r_pct_pt)
-                print(f"{pct}% radius (jet shape):", ", ".join(
-                    [f"{meta_dict[f'{pre}Jet{key}_radius{pct}']['mean']:.2} ({meta_dict[f'{pre}Jet{key}_radius{pct}']['stdev']:.2})" for key in jet_ind_keys]
-                ))
+                for pct in dr_pcts:
+                    for ind,key in zip(jet_inds, jet_ind_keys):
+                        r_pct_pt = events[f"{pre}Jet12_radius{pct}"][:, ind]
+                        meta_dict[f"{pre}Jet{key}_radius{pct}"] = fill_stats(r_pct_pt)
+                    print(f"{pct}% radius (jet shape):", ", ".join(
+                        [f"{meta_dict[f'{pre}Jet{key}_radius{pct}']['mean']:.2} ({meta_dict[f'{pre}Jet{key}_radius{pct}']['stdev']:.2})" for key in jet_ind_keys]
+                    ))
 
     # dark parton/hadron jet mass and pt
     events["DPJet12_pt"] = events["DPJet12"].pt
@@ -654,25 +537,22 @@ def histogram(filename, helper, with_constituents=True, gen_only=False, debug=Fa
             fill_hist("DeltaEta",35,0,8.0,r"$\Delta\eta(JJ)$"),
             fill_hist("DeltaPhi",20,0,3.15,r"$\Delta\phi(JJ)$"),
             fill_hist("DeltaPhi_MET_Jet12",25,0,3.15,r"$\Delta\phi(J_{JETIND},p_{\text{T}}^{\text{miss}})$"),
-            fill_hist("Jet12_sdmass",50,0,150,r"$m_{\text{SD}}(J_{JETIND})$ [GeV]"),
-            fill_hist("Jet12_sdpt",50,0,mmed*0.75,r"$p^{\text{SD}}_{\text{T}}(J_{JETIND})$ [GeV]"),
         ]))
-        for t in events.fields:
-            if 'tau' not in t: continue
-            l = t.split('_')
-            label = l[1].replace('tau', '$\\tau_{')+','+l[0].replace('et12', '_{JETIND}')+'}$'
-            hist_dict.update(chain.from_iterable([
-                fill_hist(t,40,0,1,label)
-            ]))
 
-    # histograms of the additional observables (only if the merged file was used)
-    if have_extra:
+    # soft-drop and N-subjettiness (tau) histograms of every jet collection (reco only without gen_only)
+    for pre,label in jet_label.items():
+        if pre not in jet_pre: continue
+        sup = "" if pre == "" else r"^{\text{"+label+"}}"
         hist_dict.update(chain.from_iterable([
-            fill_hist("DSJet12_N2",50,0,0.5,r"$N_2^{(\beta=1)}(J_{JETIND}^{\text{reco}})$"),
-            fill_hist("DSJet12_N3",50,0,5,r"$N_3^{(\beta=1)}(J_{JETIND}^{\text{reco}})$"),
-            fill_hist("F_FatJet_LundX",40,-1,7,r"Primary Lund plane $\ln(0.8/\Delta)$"),
-            fill_hist("F_FatJet_LundY",50,-8,6,r"Primary Lund plane $\ln(k_{\text{T}}/\text{GeV})$"),
+            fill_hist(f"{pre}Jet12_sdmass",50,0,150,r"$m_{\text{SD}}(J_{JETIND}"+sup+r")$ [GeV]"),
+            fill_hist(f"{pre}Jet12_sdpt",50,0,mmed*0.75,r"$p^{\text{SD}}_{\text{T}}(J_{JETIND}"+sup+r")$ [GeV]"),
         ]))
+        for i in range(1,6):
+            tau_names = [f"tau{i}"] + ([f"tau{i}{i-1}"] if i != 1 else [])
+            for name in tau_names:
+                hist_dict.update(chain.from_iterable([
+                    fill_hist(f"{pre}Jet12_{name}",40,0,1,"$\\tau_{"+name[3:]+",J_{JETIND}"+sup+"}$")
+                ]))
 
     # gen-level histograms
 
@@ -714,7 +594,7 @@ def histogram(filename, helper, with_constituents=True, gen_only=False, debug=Fa
         dhj_nmax = [199.5, 24.5, 24.5, 199.5, 199.5]
         dhj_nbin = [50, 25, 25, 50, 50]
         for pre,label,nmax,nbin in zip(["", *dhj_pre], dhj_labels,dhj_nmax,dhj_nbin):
-            if pre not in jet_pre: continue
+            if pre not in jet_pre or not have_extra: continue
             hist_dict.update(chain.from_iterable([
                 fill_hist(f"{pre}Jet12_radius90",50,0,2,r"${\Delta}R_{90}(J_{JETIND}^{\text{"+label+"}})$"),
                 fill_hist(f"{pre}Jet12_radius95",50,0,2,r"${\Delta}R_{95}(J_{JETIND}^{\text{"+label+"}})$"),
@@ -730,10 +610,15 @@ def histogram(filename, helper, with_constituents=True, gen_only=False, debug=Fa
                 hist_dict.update(chain.from_iterable([
                     fill_hist(f"{pre}Jet12_lundMult{k}",20,0,20,r"Primary Lund Multiplicity $(J_{JETIND}^{\text{"+label+"}})$, "+f"$k_T>{k}$ GeV")
                 ]))
-            for name, (_, ecf_label, bins) in ecfs.items():
+            for name, (ecf_label, bins) in ecf_hists.items():
                 hist_dict.update(chain.from_iterable([
                     fill_hist(f"{pre}Jet12_{name}",*bins,ecf_label+r"$(J_{JETIND}^{\text{"+label+"}})$")
                 ]))
+            # primary Lund plane points of all the leading jets (one list of points per event)
+            hist_dict.update(chain.from_iterable([
+                fill_hist(f"F_{jet_collection[pre]}_LundX",40,-1,7,r"Primary Lund plane $\ln(0.8/\Delta)$ $(J^{\text{"+label+"}})$"),
+                fill_hist(f"F_{jet_collection[pre]}_LundY",50,-8,6,r"Primary Lund plane $\ln(k_{\text{T}}/\text{GeV})$ $(J^{\text{"+label+"}})$"),
+            ]))
 
     # finish output dictionary
     output["hist"] = hist_dict
