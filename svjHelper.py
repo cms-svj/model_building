@@ -1,4 +1,4 @@
-import math, os
+import argparse, math, os
 from string import Template
 from pathlib import Path
 from magiconfig import MagiConfig
@@ -714,6 +714,29 @@ class baseHelper():
         return new_lines
 
 class svjHelper(baseHelper):
+    # optional settings (e.g. to restore 8.310 behavior): option -> Pythia setting
+    # a setting is only applied if the running Pythia build defines it (in $PYTHIA8DATA), otherwise it is skipped with a warning
+    # HiddenValley stop*, mJoin*, mStringMin, constituentMass, closedM2max, kTolerance require patched Pythia (install/patches/pythia83NN_hvMassScales.patch) and setabsigma = 2;
+    # patched settings only exist in versions where the quantity is rescaled by k
+    pythia_extra_settings = {
+        "hv_setabsigma": "HiddenValley:setabsigma",
+        "hv_alund": "HiddenValley:aLund",
+        "hv_blund": "HiddenValley:bLund",
+        "hv_sigmalund": "HiddenValley:sigmaLund",
+        "hv_rfact": "HiddenValley:rFact",
+        "hv_stop_mass": "HiddenValley:stopMass",
+        "hv_stop_new_flav": "HiddenValley:stopNewFlav",
+        "hv_stop_smear": "HiddenValley:stopSmear",
+        "hv_mjoin": "HiddenValley:mJoin",
+        "hv_mjoin_junction": "HiddenValley:mJoinJunction",
+        "hv_mstring_min": "HiddenValley:mStringMin",
+        "hv_constituent_mass": "HiddenValley:constituentMass",
+        "hv_closed_m2max": "HiddenValley:closedM2max",
+        "hv_ktolerance": "HiddenValley:kTolerance",
+        "stop_mass": "StringFragmentation:stopMass",
+        "recoil_strategy_rf": "TimeShower:recoilStrategyRF",
+    }
+
     @staticmethod
     def add_arguments(parser):
         parser.add_argument("--channel",type=str,required=True,help="production channel")
@@ -730,6 +753,22 @@ class svjHelper(baseHelper):
         parser.add_argument("--spectrum",type=str,required=True,help="dark hadron spectrum scheme")
         parser.add_argument("--gq",type=float,default=True,help="Zprime quark coupling")
         parser.add_argument("--gchi",type=float,default=True,help="Zprime dark quark coupling")
+        parser.add_argument("--hv-setabsigma", type=int, default=argparse.SUPPRESS, help="HiddenValley:setabsigma (Pythia >= 8.313)")
+        parser.add_argument("--hv-alund", type=float, default=argparse.SUPPRESS, help="HiddenValley:aLund (Pythia >= 8.313)")
+        parser.add_argument("--hv-blund", type=float, default=argparse.SUPPRESS, help="HiddenValley:bLund [GeV^-2] (Pythia >= 8.313)")
+        parser.add_argument("--hv-sigmalund", type=float, default=argparse.SUPPRESS, help="HiddenValley:sigmaLund [GeV] (Pythia >= 8.313)")
+        parser.add_argument("--hv-rfact", type=float, nargs='*', default=argparse.SUPPRESS, help="HiddenValley:rFact, one value per dark flavor (Pythia >= 8.313)")
+        parser.add_argument("--hv-stop-mass", type=float, default=argparse.SUPPRESS, help="HiddenValley:stopMass [GeV] (patched Pythia >= 8.313, setabsigma = 2)")
+        parser.add_argument("--hv-stop-new-flav", type=float, default=argparse.SUPPRESS, help="HiddenValley:stopNewFlav (patched Pythia >= 8.313, setabsigma = 2)")
+        parser.add_argument("--hv-stop-smear", type=float, default=argparse.SUPPRESS, help="HiddenValley:stopSmear (patched Pythia >= 8.313, setabsigma = 2)")
+        parser.add_argument("--hv-mjoin", type=float, default=argparse.SUPPRESS, help="HiddenValley:mJoin [GeV] (patched Pythia >= 8.315, setabsigma = 2)")
+        parser.add_argument("--hv-mjoin-junction", type=float, default=argparse.SUPPRESS, help="HiddenValley:mJoinJunction [GeV] (patched Pythia >= 8.315, setabsigma = 2)")
+        parser.add_argument("--hv-mstring-min", type=float, default=argparse.SUPPRESS, help="HiddenValley:mStringMin [GeV] (patched Pythia >= 8.315, setabsigma = 2)")
+        parser.add_argument("--hv-constituent-mass", type=float, default=argparse.SUPPRESS, help="HiddenValley:constituentMass [GeV] (patched Pythia >= 8.315, setabsigma = 2)")
+        parser.add_argument("--hv-closed-m2max", type=float, default=argparse.SUPPRESS, help="HiddenValley:closedM2max [GeV^2] (patched Pythia 8.315 only, setabsigma = 2)")
+        parser.add_argument("--hv-ktolerance", type=float, default=argparse.SUPPRESS, help="HiddenValley:kTolerance (patched Pythia >= 8.315, setabsigma = 2)")
+        parser.add_argument("--stop-mass", type=float, default=argparse.SUPPRESS, help="StringFragmentation:stopMass [GeV] (Pythia >= 8.313)")
+        parser.add_argument("--recoil-strategy-rf", type=int, default=argparse.SUPPRESS, help="TimeShower:recoilStrategyRF (Pythia >= 8.313)")
 
     def __init__(self,args):
         super().__init__(args)
@@ -811,6 +850,20 @@ class svjHelper(baseHelper):
         lines_decay = [line for dh in self.spectrumParticles for line in dh.getLines()]
 
         lines = self.channelLines + lines_HV + self.spectrumLines + lines_decay
+
+        # settings are defined in the xmldoc of the running Pythia build (patched settings only exist in patched builds)
+        pythia_data = Path(os.environ["PYTHIA8DATA"])
+        pythia_xml = "".join(xml.read_text(errors="ignore") for xml in pythia_data.glob("*.xml"))
+        for arg,val in vars(self).items():
+            if arg in self.pythia_extra_settings:
+                setting = self.pythia_extra_settings[arg]
+                if f'name="{setting}"' not in pythia_xml:
+                    print(f'Warning: skipping {setting} = {val}: not defined in {pythia_data} (unsupported version or unpatched Pythia)')
+                    continue
+                if isinstance(val,list):
+                    val = ",".join(str(v) for v in val)
+                lines.append(f'{setting} = {val}')
+
         return lines
 
 class extHelper(baseHelper):
