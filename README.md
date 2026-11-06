@@ -57,10 +57,14 @@ This command will, in order:
 2. generate the Pythia and Delphes cards for this configuration
 3. run Pythia
 4. run Delphes
-5. make histograms
+5. compute additional observables of the two leading jets of each of five jet collections (`FatJet`, `DarkPartonJet`, `DarkHadronJet`, `DarkHadronVisibleJet`, `DarkHadronStableJet`): N2, N3, jet substructure (girth, pT dispersion, major and minor axes, number of constituents, primary Lund multiplicities, energy correlation functions, and jet shape radii), and the primary Lund-plane points; save them in a friend tree (`events_friend.root`), and merge the friend tree into the Delphes tree (`events_merged.root`, with branches named `F_<collection>_<observable>`); the merge can be skipped with `--no-merge`
+6. make histograms (if `events_merged.root` exists, i.e. item 5 was run without `--no-merge`, this also includes histograms of the additional observables of all five jet collections)
 
-If the `--steps` command is omitted, items 3, 4, and 5 will be skipped (the default is just to generate the cards).
-Items 2, 3, 4, and 5 can be run separately by specifying just one of them in `--steps`.
+If the `--steps` command is omitted, items 3 through 6 will be skipped (the default is just to generate the cards).
+Items 2 through 6 can be run separately by specifying just one of them in `--steps`, except that the Pythia and Delphes steps (items 3 and 4) also need the cards step (item 2) in the same command, e.g. `--steps cards delphes`.
+Item 5 requires jet constituents, so it is skipped if `--no-constituents` is used.
+Item 6 reads `events_merged.root` if it exists, otherwise `events.root`; the histograms of the additional observables are only made from the merged file (this includes the case of `--gen-only`, which then makes them for the dark jet collections only).
+N2 and N3 are only defined for jets with at least 3 and 4 constituents, respectively, and the N-subjettiness values (tau, calculated by Delphes) of a jet are only defined if it has more constituents than the number of subjets: jets without a defined value are left out of the corresponding histograms instead of being filled with 0.
 
 The input model configuration can be modified using command-line arguments, and the resulting configuration file will be generated along with the Pythia and Delphes cards.
 
