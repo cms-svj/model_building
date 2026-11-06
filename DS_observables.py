@@ -23,6 +23,12 @@ ecfs = {
     "C2": dict(func="c2"),
     "D2": dict(func="d2"),
 }
+# FastJet's built-in ECF ratios, which need at least 3 (N2) or 4 (N3) constituents to be defined
+ratio_ecfs = {
+    "N2": dict(func="n2"),
+    "N3": dict(func="n3"),
+}
+MIN_CONSTITUENTS = {"N2": 3, "N3": 4}
 
 # observables of each jet (shape: event -> jet), written into one record per collection
 JET_SUBSTRUCTURE = (
@@ -69,19 +75,6 @@ def force_jet_layout(arr, jets, fill_value=0.0):
 def count_constituents(jets):
     # number of constituents of each jet in a flat jet array
     return ak.to_numpy(ak.fill_none(ak.num(jets["Constituents"], axis=1), 0))
-
-
-def cluster_jets(jets, R):
-    # one FastJet cluster sequence per jet, made directly from the (vector) constituents
-    jet_def = fastjet.JetDefinition(fastjet.cambridge_algorithm, R)
-    return fastjet.ClusterSequence(ak.to_packed(jets["Constituents"]), jet_def)
-
-
-def builtin_ecf(cs, func, beta):
-    # FastJet's built-in ECF variation (e.g. "n2", "n3") of each jet when clustered exclusively into one jet
-    values = cs.exclusive_jets_energy_correlator(njets=1, beta=beta, func=func)
-    values = ak.fill_none(values, np.nan)
-    return ak.to_numpy(ak.flatten(values, axis=None)).astype(np.float64)
 
 
 def lund_points_per_event(values, n_per_jet, n_per_event):
@@ -165,17 +158,17 @@ def fj_cluster_sequence(jets):
     cs = fastjet.ClusterSequence(ak.to_packed(jets.Constituents), jet_def)
     return cs
 
-def getLundMultiplicity(cluster_seq, kt = 1):
-    # Retrieve the primary Lund-plane declusterings for the single jet and apply kt cut
-    lund = cluster_seq.exclusive_jets_lund_declusterings(njets=1)
-    # firsts, not flatten: both strip the njets=1 axis, but flatten drops padded
-    # None jets entirely, which breaks the unflatten back to (event, jet)
-    kt_values = ak.firsts(lund)["kt"]
+def getLundMultiplicity(lund, kt = 1):
+    # Number of primary Lund-plane declusterings with kt above the cut
+    # lund: the primary Lund-plane declusterings of each jet (see calculate_jet_substructure)
+    kt_values = lund["kt"]
     mult = ak.sum(kt_values > kt, axis=-1)
     return mult
 
-def getECF(cluster_seq, **kwargs):
-    ecf = cluster_seq.exclusive_jets_energy_correlator(njets=1, beta=1, **kwargs)
+def getECF(cluster_seq, beta=1.0, **kwargs):
+    # FastJet's energy correlation function of each jet when clustered exclusively into one jet
+    # kwargs select the function (npoint=2 or 3 for e2 or e3, func="c2", "d2", "n2" or "n3")
+    ecf = cluster_seq.exclusive_jets_energy_correlator(njets=1, beta=beta, **kwargs)
     return ecf
 
 def jet_const_cumsum(array):
@@ -216,13 +209,15 @@ def calculate_radius(jet12, pct):
     return ak.pad_none(ak.firsts(sorted_prop[mask_pt].dr, axis=-1), target=2, axis=1)
 
 
-def calculate_shape_substructure(jet12):
+def calculate_shape_substructure(jet12, lund):
     """
-    Substructure observables of the two leading jets of each event, calculated from the jet constituents:
-    girth, ptD, number of constituents, major and minor axis, primary Lund multiplicities, ECFs and jet shape radii.
+    Substructure observables of the two leading jets of each event that are calculated from the jet constituents
+    and the primary Lund-plane declusterings (no FastJet call here):
+    girth, ptD, number of constituents, major and minor axis, primary Lund multiplicities and jet shape radii.
     jet12: the two leading jets of each event, padded to exactly two with None (shape: event -> jet)
-    Returns a dictionary with an array (shape: event -> jet, padded jets are None) for each name in
-    JET_SUBSTRUCTURE, except for N2 and N3, which are calculated in calculate_n2_n3_lund.
+    lund: the primary Lund-plane declusterings of each jet of jet12, flattened (see calculate_jet_substructure)
+    Returns a dictionary with an array (shape: event -> jet, padded jets are None) for each name
+    in JET_SUBSTRUCTURE that is not an ECF (see calculate_ecfs).
     """
     obs = {}
     obs["girth"] = calculate_girth(jet12)
@@ -232,101 +227,86 @@ def calculate_shape_substructure(jet12):
     obs["majoraxis"], obs["minoraxis"] = calc_axis1_axis2(jet12)
 
     jet12_shape = ak.num(jet12, axis=1)
-    cs = fj_cluster_sequence(ak.flatten(jet12, axis=1))
     for k in KT_CUTS:
-        obs[f"lundMult{k}"] = ak.unflatten(getLundMultiplicity(cs, kt = k), jet12_shape)
-    for name, kwargs in ecfs.items():
-        obs[name] = ak.unflatten(getECF(cs, **kwargs), jet12_shape)
+        obs[f"lundMult{k}"] = ak.unflatten(getLundMultiplicity(lund, kt = k), jet12_shape)
 
     for pct in DR_PCTS:
         obs[f"radius{pct}"] = calculate_radius(jet12, pct)
     return obs
 
 
-def calculate_n2_n3_lund(event_jets, beta=1.0, fill_value=SENTINEL, lund_R=0.8):
+def calculate_ecfs(cs, jet12_shape, n_const, beta=1.0):
     """
-    N2, N3 and the primary Lund-plane points of each jet, using FastJet.
-    All jets are clustered once (Cambridge/Aachen), and all observables are taken from that clustering.
-
-        N2: FastJet's built-in "n2", needs at least 3 constituents
-        N3: FastJet's built-in "n3", needs at least 4 constituents
-        Lund points: LundX = log(lund_R/Delta), LundY = log(kt), need at least 2 constituents
-
-    Jets that cannot be assigned an N2 or N3 value get fill_value.
-    Returns two dictionaries and the number of jets used for the Lund points:
-        jet_sub: "N2", "N3" (shape: event -> jet), written into the record of the collection
-        lund_obs: "LundX", "LundY" (shape: event -> Lund point), written as separate branches
+    All the energy correlation functions (the ECFs in ecfs and N2, N3 in ratio_ecfs) of each jet, with getECF.
+    cs: the FastJet cluster sequence of the jets (see calculate_jet_substructure)
+    jet12_shape: number of jets of each event, including the padded ones
+    n_const: number of constituents of each jet (flat)
+    N2 and N3 are only defined for jets with at least MIN_CONSTITUENTS constituents, the others are NaN.
+    Returns a dictionary with an array (shape: event -> jet) for each ECF.
     """
-    jets = ak.flatten(event_jets, axis=1)  # all jets of all events in one list
-    n_const = count_constituents(jets)
-
-    n2 = np.full(len(jets), fill_value, dtype=np.float64)
-    n3 = np.full(len(jets), fill_value, dtype=np.float64)
-    n_points = np.zeros(len(jets), dtype=np.int64)  # number of Lund points of each jet
-    x_flat = np.zeros(0, dtype=np.float64)
-    y_flat = np.zeros(0, dtype=np.float64)
-    n_jets = 0
-
-    # Cluster once
-    clustered = np.flatnonzero(n_const >= 2)
-    if len(clustered) > 0:
-        cs = cluster_jets(jets[clustered], R=1000.0)
-        nc = n_const[clustered]
+    obs = {}
+    for name, kwargs in {**ratio_ecfs, **ecfs}.items():
+        values = getECF(cs, beta, **kwargs)
+        if name in MIN_CONSTITUENTS:
+            values = ak.to_numpy(ak.flatten(ak.fill_none(values, np.nan), axis=None)).astype(np.float64)
+            values[n_const < MIN_CONSTITUENTS[name]] = np.nan
+        obs[name] = ak.unflatten(values, jet12_shape)
+    return obs
 
 
-        n2_all = builtin_ecf(cs, "n2", beta)
-        n3_all = builtin_ecf(cs, "n3", beta)
-        ok2 = (nc >= 3) & np.isfinite(n2_all)
-        ok3 = (nc >= 4) & np.isfinite(n3_all)
-        n2[clustered[ok2]] = n2_all[ok2]
-        n3[clustered[ok3]] = n3_all[ok3]
+def calculate_lund_points(lund, n_per_event, lund_R=0.8):
+    """
+    Primary Lund-plane points of each jet: LundX = log(lund_R/Delta), LundY = log(kt).
+    lund: the primary Lund-plane declusterings of each jet (see calculate_jet_substructure)
+    n_per_event: number of jets of each event, including the padded ones
+    Returns a dictionary with "LundX", "LundY" (shape: event -> Lund point).
+    """
+    # jets without declusterings (padded jets, jets with a single constituent) have no points
+    delta = ak.fill_none(lund["Delta"], [], axis=0)
+    kt = ak.fill_none(lund["kt"], [], axis=0)
 
-        # Primary Lund declustering
-        lund = cs.exclusive_jets_lund_declusterings(njets=1)
-        delta = lund["Delta"]
-        kt = lund["kt"]
+    good = np.isfinite(delta) & np.isfinite(kt) & (delta > 0.0) & (kt > 0.0)
+    x = np.log(lund_R / delta[good])
+    y = np.log(kt[good])
 
-        # make sure there is exactly one list of declusterings per jet
-        while delta.ndim > 2:
-            delta = ak.flatten(delta, axis=1)
-            kt = ak.flatten(kt, axis=1)
-
-        good = np.isfinite(delta) & np.isfinite(kt) & (delta > 0.0) & (kt > 0.0)
-        x = np.log(lund_R / delta[good])
-        y = np.log(kt[good])
-
-        n_jets = len(clustered)
-        n_points[clustered] = ak.to_numpy(ak.num(x, axis=1))
-        x_flat = ak.to_numpy(ak.flatten(x, axis=1))
-        y_flat = ak.to_numpy(ak.flatten(y, axis=1))
-
-    n_per_event = ak.to_numpy(ak.fill_none(ak.num(event_jets, axis=1), 0))
-
-    # back to event -> jet
-    N2 = ak.to_packed(ak.unflatten(n2.astype(np.float32), n_per_event))
-    N3 = ak.to_packed(ak.unflatten(n3.astype(np.float32), n_per_event))
-
-    # shape: event -> Lund point
-    LundX = lund_points_per_event(x_flat, n_points, n_per_event)
-    LundY = lund_points_per_event(y_flat, n_points, n_per_event)
-
-    # per-jet values (event -> jet) go into the record of the collection
-    jet_sub = {"N2": N2, "N3": N3}
-    # separate branches: the number of Lund points differs from the number of jets
-    lund_obs = {"LundX": LundX, "LundY": LundY}
-
-    return jet_sub, lund_obs, n_jets
+    n_points = ak.to_numpy(ak.num(x, axis=1))  # number of Lund points of each jet
+    x_flat = ak.to_numpy(ak.flatten(x, axis=1))
+    y_flat = ak.to_numpy(ak.flatten(y, axis=1))
+    return {
+        "LundX": lund_points_per_event(x_flat, n_points, n_per_event),
+        "LundY": lund_points_per_event(y_flat, n_points, n_per_event),
+    }
 
 
-def calculate_jet_substructure(jets, beta=1.0, fill_value=SENTINEL, lund_R=0.8):
+def calculate_jet_substructure(jets, beta=1.0, lund_R=0.8):
     """
     All the observables (see JET_SUBSTRUCTURE and LUND_OBSERVABLES) of the jets of one jet collection.
     jets: the two leading jets of each event (shape: event -> jet, at most two jets per event)
-    Returns the same as calculate_n2_n3_lund, with the substructure observables added to jet_sub.
+
+    The FastJet calls are all made here, once: the jets are clustered once (Cambridge/Aachen, one jet containing
+    all the constituents), and the primary Lund-plane declusterings are calculated once. The results are passed to
+    the functions that calculate the observables.
+
+    Returns two dictionaries and the number of jets used for the Lund points (jets with at least 2 constituents):
+        jet_sub: all the names in JET_SUBSTRUCTURE (shape: event -> jet, padded jets and undefined values are None
+                 or NaN), written into the record of the collection
+        lund_obs: "LundX", "LundY" (shape: event -> Lund point), written as separate branches
     """
-    jet_sub, lund_obs, n_jets = calculate_n2_n3_lund(jets, beta=beta, fill_value=fill_value, lund_R=lund_R)
     # the substructure code works on exactly two jets per event (padded with None)
-    jet_sub.update(calculate_shape_substructure(ak.pad_none(jets, target=2, axis=1)))
+    jet12 = ak.pad_none(jets, target=2, axis=1)
+    jet12_shape = ak.num(jet12, axis=1)
+    jets_flat = ak.flatten(jet12, axis=1)
+    n_const = count_constituents(jets_flat)
+
+    cs = fj_cluster_sequence(jets_flat)
+    # firsts, not flatten: both strip the njets=1 axis, but flatten drops padded
+    # None jets entirely, which breaks the unflatten back to (event, jet)
+    lund = ak.firsts(cs.exclusive_jets_lund_declusterings(njets=1))
+
+    jet_sub = calculate_shape_substructure(jet12, lund)
+    jet_sub.update(calculate_ecfs(cs, jet12_shape, n_const, beta))
+    lund_obs = calculate_lund_points(lund, ak.to_numpy(jet12_shape), lund_R)
+    n_jets = int(np.count_nonzero(n_const >= 2))
     return jet_sub, lund_obs, n_jets
 
 
@@ -349,7 +329,7 @@ def make_friend_tree(root_fname, friend_fname, with_constituents=True, verbose=F
         # only the two leading jets of each event are used
         jets = events[coll][:, 0:2]
 
-        jet_sub, lund_obs, n_jets = calculate_jet_substructure(jets, beta=1.0, fill_value=SENTINEL, lund_R=0.8)
+        jet_sub, lund_obs, n_jets = calculate_jet_substructure(jets, beta=1.0, lund_R=0.8)
 
         # make sure the friend tree has the same number of entries as the Delphes tree
         for name, arr in {**jet_sub, **lund_obs}.items():
