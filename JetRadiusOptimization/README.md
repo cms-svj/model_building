@@ -35,12 +35,15 @@ For each (R_DH, R):
    (visible jets), as defined above. At R_DH = R = 0.8 these are exactly the
    Delphes `DarkHadronJet` and `GenFatJet`.
 2. Match truth jets one-to-one to visible jets by shared visible pT.
-3. Split the matched jet's pT by where it came from, using `darkancestry`:
+3. Split the matched jet's pT by where it came from, using `darkancestry`.
+   A dark hadron is **complete** in the jet if the jet holds at least a
+   fraction `--min-containment` (default 0.95) of its visible pT, and
+   **partial** if the jet holds some but less:
 
 | | pT fraction from |
 |---|---|
-| `f_full` | dark hadrons **completely** inside the jet |
-| `f_partial` | dark hadrons only **partly** inside the jet |
+| `f_full` | **complete** dark hadrons |
+| `f_partial` | **partial** dark hadrons |
 | `f_nodh` | particles with **no** dark-hadron ancestor (ISR, UE, ...) |
 
 These add up to 1.
@@ -52,7 +55,8 @@ pT(S) the scalar pT sum over a set of particles S, V_d the visible descendants
 of dark hadron d, and V_T the union of V_d over the dark hadrons of T:
 
 - d is **complete** in J if pT(V_d ∩ J) ≥ 0.95 · pT(V_d) (`--min-containment`,
-  default 0.95; 1 requires every visible descendant)
+  default 0.95; 1 requires every visible descendant), the same definition as
+  for `f_full`
 
 | Score | Definition | Meaning |
 |---|---|---|
@@ -66,25 +70,65 @@ descendants are skipped. The output also keeps the counts `n_dh` (dark hadrons
 of T with visible descendants) and `n_full` (complete ones). Results are shown
 both inclusively and in bins of the truth jet's visible pT, pT(V_T).
 
+## Jet shapes
+
+The jet-shape variables defined in `Histogram.py` are computed for the truth
+and the matched visible jets, with ΔR in (η, φ) as in `Histogram.py`:
+
+| Variable | Definition | Computed for |
+|---|---|---|
+| `truth_r90`, `truth_r95`, `truth_r99` | radius around the dark-hadron jet axis containing 90/95/99% of the truth jet's visible pT, pT(V_T) | truth jet T |
+| `psi_truth` | Ψ_T(R) = pT(V_T within R of the dark-hadron jet axis) / pT(V_T), at each scanned R | truth jet T |
+| `jet_r90`, `jet_r95`, `jet_r99` | radius around the jet axis containing 90/95/99% of the jet's scalar constituent pT | matched jet J |
+| `jet_girth` | Σ pT,i ΔR_i / pT(J) | matched jet J |
+| `jet_ptd` | √(Σ pT,i²) / Σ pT,i | matched jet J |
+| `jet_major`, `jet_minor` | √eigenvalues of the pT²-weighted (Δη, Δφ) covariance | matched jet J |
+| `jet_nconst` | number of constituents | matched jet J |
+
+Ψ(r) is the integrated jet shape of Seymour [1]: the fraction of the jet's pT
+within r of its axis. The radii are its inverse (Ψ = 0.90, 0.95, 0.99). Following
+[1], they are computed over the particles assigned to the jet (or, for the
+truth jet, its visible descendants), not over everything in the cone. The truth
+radii give a geometric containment radius for the dark-hadron jets that can be
+compared directly with the best R from quality and IoU.
+
+## Relation to the literature
+
+| Here | Closest standard quantity | Reference |
+|---|---|---|
+| Ψ_T(R), `truth_r95` | integrated jet shape Ψ(r) and its inverse | Seymour [1] |
+| acceptance, purity | energy fraction of correctly clustered particles relative to the true and to the reconstructed jet, with 95% cuts on both | ILD [2] |
+| IoU | energy-weighted intersection over union (EIOU) of true and reconstructed showers | Qasim et al. [3] |
+| complete dark hadron | "fully contained" boosted W/Z/top jets: all decay partons within ΔR < 0.75 R (ATLAS) or ΔR < 0.6 of an AK8 jet (CMS); binary and parton-level, where ours is pT-weighted and hadron-level | [4], [5] |
+| quality = acceptance × purity | no standard equivalent found; the "quality" of [6] is a different, mass-peak-based measure | [6] |
+| the trade-off in R | out-of-cone losses (hadronization, ∝ 1/R) against UE contamination (∝ R²) | [7] |
+
+1. M. H. Seymour, *Jet shapes in hadron collisions: higher orders, resummation and hadronization*, Nucl. Phys. B513 (1998) 269, [arXiv:hep-ph/9707338](https://arxiv.org/abs/hep-ph/9707338)
+2. B. Bliewert et al., *Towards an update of the ILD ZHH analysis*, [arXiv:2410.15323](https://arxiv.org/abs/2410.15323)
+3. S. R. Qasim, K. Long, J. Kieseler, M. Pierini, R. Nawaz, *Multi-particle reconstruction in the High Granularity Calorimeter using object condensation and graph neural networks*, [arXiv:2106.01832](https://arxiv.org/abs/2106.01832)
+4. ATLAS Collaboration, *Performance of top-quark and W-boson tagging with ATLAS in Run 2 of the LHC*, Eur. Phys. J. C 79 (2019) 375, [arXiv:1808.07858](https://arxiv.org/abs/1808.07858)
+5. CMS Collaboration, *Identification of heavy, energetic, hadronically decaying particles using machine-learning techniques*, JINST 15 (2020) P06005, [arXiv:2004.08262](https://arxiv.org/abs/2004.08262)
+6. M. Cacciari, J. Rojo, G. P. Salam, *Quantifying the performance of jet definitions for kinematic reconstruction at the LHC*, JHEP 0812 (2008) 032, [arXiv:0810.1304](https://arxiv.org/abs/0810.1304)
+7. M. Dasgupta, L. Magnea, G. P. Salam, *Non-perturbative QCD effects in jets at hadron colliders*, JHEP 0802 (2008) 055, [arXiv:0712.3014](https://arxiv.org/abs/0712.3014)
+
 ## Files and running
 
 - `radius.py` (library): clustering, matching, metrics. Run directly, it checks
-  our clustering against the stored `GenFatJet` and `DarkHadronJet`.
+  our clustering against the stored `GenFatJet` (and `DarkHadronJet` with
+  `--dark-hadron-jets`).
 - `scan.py`: runs the scan for one `run_model` directory (default R = 0.2–2.0
   and R_DH = 0.8, 1.0; 0.8 and 1.0 are always included in both grids; set
-  `--truth-radii` for the full 2D grid) and writes `JetRadius.pkl` next to
-  `events.root`. Model parameters come from the directory's `config.py` via
-  `svjHelper`.
+  `--truth-radii` for the full 2D grid) and writes `JetRadius.pkl`.
 - `plot.py`: scores vs R at one R_DH (inclusive and in bins of truth visible
   pT), 2D maps of quality and IoU over (R, R_DH) with the best R per R_DH
-  marked, and the best-R points of all models overlaid on the same axes; PDF
-  by default. Takes a model-directory pattern through `common.resolve_models`,
-  so EOS (`/store/...`) works too.
-
-From the repository root, after `source init.sh`:
+  marked, and the best-R points of all models overlaid on the same axes;
+  distributions of the scores and jet shapes at several R, and of the truth
+  containment radii at several R_DH. With `--displays`, also event displays
+  and all truth jets stacked around their axes (needs `events.root` in the
+  model directory).
 
 ```bash
-# check our clustering against the stored GenFatJet and DarkHadronJet
+# check our clustering against the stored GenFatJet
 python3 JetRadiusOptimization/radius.py -i models/<model>/events.root
 
 # full 2D scan for one model directory made by run_model
@@ -92,15 +136,17 @@ python3 JetRadiusOptimization/scan.py -d models/<model> --truth-radii $(seq 0.2 
 
 # plots for all scanned models, one curve per value of a model parameter
 python3 JetRadiusOptimization/plot.py -m "models/*" -x rinv
-```
 
-Use `--help` on any script for all options.
+# also event displays and stacked truth jets (reads events.root again)
+python3 JetRadiusOptimization/plot.py -m "models/*" -x rinv --displays
+```
 
 ## Output
 
 - `JetRadius.pkl` (from `scan.py`): the model metadata, the radius grids, and
   one row per (event, truth jet, R_DH, R) with the scores, `f_full`,
-  `f_partial`, `f_nodh`, `n_dh`, `n_full`, and the truth and matched-jet pT.
+  `f_partial`, `f_nodh`, `n_dh`, `n_full`, the truth and matched-jet pT, and
+  the jet-shape variables above.
 - `JetRadius_plots/` (from `plot.py`, `--dir`):
 
 | File | Shows |
@@ -108,62 +154,24 @@ Use `--help` on any script for all options.
 | `<score>.pdf` | each score vs R at one R_DH (`--truth-radius`, default 0.8), one curve per model |
 | `<score>_ptbins_<model>.pdf` | each score vs R in bins of the truth jet's visible pT (`--pt-bins`) |
 | `best_radius_vs_pt_<score>.pdf` | best R per truth-pT bin |
-| `quality_2d_<model>.pdf`, `iou_2d_<model>.pdf` | the mean score over (R, R_DH), with the best R per R_DH marked |
-| `best_radius_quality.pdf`, `best_radius_iou.pdf` | the best-R points of all models overlaid |
+| `quality_2d_<model>.pdf`, `iou_2d_<model>.pdf` | the mean score over (R, R_DH), with the best R per R_DH marked and the mean truth ΔR₉₀/₉₅/₉₉ drawn |
+| `best_radius_quality.pdf`, `best_radius_iou.pdf` | the best-R points of all models overlaid, with the truth ΔR₉₅ (all three for one model) |
+| `<quantity>_dist_<model>.pdf` | distributions of the scores, Ψ_T and the jet shapes at several R (`--dist-radii`) |
+| `truth_radius_dist_<model>.pdf`, `truth_r<pct>_by_rdh_<model>.pdf` | distributions of the truth ΔR₉₀/₉₅/₉₉, and of each at several R_DH (`--dist-truth-radii`) |
+| `truth_radius_vs_rdh.pdf` | mean truth ΔR₉₀/₉₅/₉₉ vs R_DH |
+| `event_<i>_<model>.pdf` (`--displays`) | one event per truth-pT bin: particles around the leading truth jet by origin, its truth ΔR₉₀/₉₅/₉₉, and the matched jet at each R (`--display-radii`) with its own ΔR₉₅ |
+| `stacked_<model>[_pt<bin>].pdf` (`--displays`) | all truth jets stacked around their axes, one image per particle origin (this truth jet's dark hadrons, other dark hadrons, ISR/UE), and pT vs ΔR stacked by origin; inclusive and per truth-pT bin |
 
-## Validation (CMS benchmark, 10k events)
+## Sanity test
 
-- Our dark-hadron clustering at R_DH = 0.8 reproduces all 40,268 stored
-  `DarkHadronJet`s exactly. `darkancestry` check: 40,268 jets, 0 mismatches.
-- Our visible clustering at R = 0.8 reproduces the stored `GenFatJet`s except
-  21 of 66,473 jets, all from numerical near-ties in anti-kT: Delphes clustered
-  the unrounded momenta, while we cluster the float32 values stored in the
-  file. Nudging the inputs by 1e-7 to 1e-6 (relative) changes our own
-  clustering in all of these events, versus under 1% of other events. The
-  check reports these as `unstable_jets: 21` and `mismatched_jets: 0`.
-
-## Results (preliminary): CMS benchmark, 10k events
-
-Model: s-channel, m_med = 1 TeV, N_c = N_f = 2, Λ = 35.15 GeV,
-m_π = m_ρ = 20 GeV, p_vector = 0.75, r_inv = 0.3 (`configs/model_cms.py`).
-Containment threshold 0.95.
-
-Best visible-jet radius R for each truth radius R_DH (mean over all truth
-jets; `best_radius_quality.pdf`, `best_radius_iou.pdf`):
-
-| R_DH | 0.2 | 0.4 | 0.6 | 0.8 | 1.0 | 1.2 | 1.4 | 1.6 | 1.8 | 2.0 |
-|---|---|---|---|---|---|---|---|---|---|---|
-| best R by quality | 1.2 | 1.3 | 1.5 | 1.5 | 1.6 | 1.6 | 1.7 | 1.7 | 1.8 | 1.8 |
-| best R by IoU | 0.3 | 0.5 | 0.6 | 0.7 | 0.9 | 1.0 | 1.1 | 1.2 | 1.3 | 1.3 |
-
-In bins of the truth jet's visible pT, at R_DH = 0.8 (best R, with the score
-there in parentheses; `<score>_ptbins_<model>.pdf`):
-
-| truth visible pT | truth jets | quality | IoU | acceptance | purity |
-|---|---|---|---|---|---|
-| 0–50 GeV | 13,160 | 1.2 (0.03) | 0.6 (0.41) | 1.6 (0.06) | 2.0 (0.07) |
-| 50–100 GeV | 5,943 | 1.2 (0.22) | 0.7 (0.59) | 1.7 (0.37) | 2.0 (0.34) |
-| 100–200 GeV | 6,865 | 1.6 (0.54) | 0.8 (0.77) | 1.9 (0.80) | 1.5 (0.63) |
-| > 200 GeV | 10,116 | 1.6 (0.78) | 0.9 (0.90) | 2.0 (0.96) | 1.2 (0.83) |
-
-- **Quality** prefers R well above R_DH: to hold 95% of each dark hadron's
-  visible pT, the visible jet has to be wider than the dark-hadron jet, since
-  the decay products spread around each dark hadron's direction.
-- **IoU** prefers R slightly below R_DH, approaching R_DH for hard jets,
-  because it also charges for UE/ISR pT in the jet.
-- **Purity** turns over only for hard jets (best R ≈ 1.2–1.5 above 100 GeV,
-  where extra UE/ISR outweighs the gain in complete dark hadrons).
-  **Acceptance** always rises with R.
-- 36% of truth jets have less than 50 GeV of visible pT; their quality stays
-  near 0.03 at every radius, so they dilute the inclusive means. The pT-binned
-  results are the more informative ones.
-- The two headline scores disagree systematically, so the answer depends on
-  what the jet is meant to capture (whole dark hadrons vs a clean match to the
-  dark-hadron jet). Both scores also rise with R_DH, so the result is a mapping
-  from R_DH to R rather than a single optimal pair.
-- Requiring every visible descendant (`--min-containment 1`) makes almost every
-  dark hadron "partial" (one soft particle outside is enough), so quality only
-  grows with R; hence the 0.95 default.
+Running `radius.py` directly reclusters R = 0.8 (and, with
+`--dark-hadron-jets`, R_DH = 0.8) and compares the jets with the stored
+`GenFatJet` (`DarkHadronJet`) constituent by constituent. A few jets can differ
+through numerical near-ties in anti-kT: Delphes clustered the unrounded
+momenta, while we cluster the float32 values stored in the file. A mismatched
+event whose clustering changes when the inputs are nudged by a relative 1e-6 is
+counted in `unstable_jets`; anything else is counted in `mismatched_jets`,
+which should be 0.
 
 ## Known limitations / follow-ups
 
@@ -171,9 +179,7 @@ there in parentheses; `<score>_ptbins_<model>.pdf`):
   hadrons), using `darkancestry` with partons as targets, would complete the
   parton → hadron → visible chain.
 - **Generator level only:** visible jets are clustered from `GenCandidate`.
-  Reconstructed (particle-flow) jets need PF → generator-particle links.
-- **One model point:** the results above are for the CMS benchmark
-  (m_med = 1 TeV, m_dark = 20 GeV, r_inv = 0.3). The scan should be run over
-  the parameter grid.
-- **Choice of score:** quality and IoU point to different radii; which one to
-  use is open.
+  A reco-level study is needed, with its own metrics where PF →
+  generator-particle links are not available.
+- **Choice of score:** quality and IoU can point to different radii; which one
+  to use is open.
