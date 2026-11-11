@@ -113,10 +113,9 @@ compared directly with the best R from quality and IoU.
 
 ## Files and running
 
-- `radius.py` (library): clustering, matching, metrics. Run directly, it checks
-  our clustering against the stored `GenFatJet` (and `DarkHadronJet` with
-  `--dark-hadron-jets`).
-- `scan.py`: runs the scan for one `run_model` directory (default R = 0.2–2.0
+- `radius.py` (library): clustering, matching, metrics.
+- `scan.py`: runs the scan for one `run_model` directory (needs `events.root`
+  and `Meta.pkl`; default R = 0.2–2.0
   and R_DH = 0.8, 1.0; 0.8 and 1.0 are always included in both grids; set
   `--truth-radii` for the full 2D grid) and writes `JetRadius.pkl`.
 - `plot.py`: scores vs R at one R_DH (inclusive and in bins of truth visible
@@ -128,11 +127,11 @@ compared directly with the best R from quality and IoU.
   model directory).
 
 ```bash
-# check our clustering against the stored GenFatJet
-python3 JetRadiusOptimization/radius.py -i models/<model>/events.root
-
 # full 2D scan for one model directory made by run_model
 python3 JetRadiusOptimization/scan.py -d models/<model> --truth-radii $(seq 0.2 0.2 2.0)
+
+# optional: first check our clustering against the stored GenFatJet and DarkHadronJet
+python3 JetRadiusOptimization/scan.py -d models/<model> --check-clustering
 
 # plots for all scanned models, one curve per value of a model parameter
 python3 JetRadiusOptimization/plot.py -m "models/*" -x rinv
@@ -164,9 +163,9 @@ python3 JetRadiusOptimization/plot.py -m "models/*" -x rinv --displays
 
 ## Sanity test
 
-Running `radius.py` directly reclusters R = 0.8 (and, with
-`--dark-hadron-jets`, R_DH = 0.8) and compares the jets with the stored
-`GenFatJet` (`DarkHadronJet`) constituent by constituent. A few jets can differ
+`scan.py --check-clustering` reclusters R = 0.8 and R_DH = 0.8 and compares
+the jets with the stored `GenFatJet` and `DarkHadronJet` constituent by
+constituent. A few jets can differ
 through numerical near-ties in anti-kT: Delphes clustered the unrounded
 momenta, while we cluster the float32 values stored in the file. A mismatched
 event whose clustering changes when the inputs are nudged by a relative 1e-6 is

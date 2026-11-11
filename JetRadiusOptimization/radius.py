@@ -44,9 +44,8 @@ Jet shapes, with the Histogram.py definitions (DeltaR in eta-phi):
     jet_r90/95/99, jet_girth, jet_ptd, jet_major, jet_minor, jet_nconst
                      shapes of the matched visible jet J over its own constituents
 
-Check the clustering against the stored GenFatJet (and DarkHadronJet with
---dark-hadron-jets) with
-    python3 JetRadiusOptimization/radius.py -i events.root
+check_clustering compares our clustering with the stored GenFatJet and
+DarkHadronJet (scan.py --check-clustering).
 """
 
 from collections import Counter
@@ -54,14 +53,11 @@ from collections import Counter
 import awkward as ak
 import fastjet
 import numpy as np
-import vector
 from scipy.optimize import linear_sum_assignment
 
 from common import DelphesSchema2, get_constituents_kernel, load_events
 from darkancestry import dark_hadron_ancestry
 from Histogram import calc_axis1_axis2, calculate_girth, calculate_ptD, radius_percentile
-
-vector.register_awkward()
 
 # same as GenFatJet and DarkHadronJet in cards/delphes_card_CMS.tcl
 PT_MIN = 15.0
@@ -165,20 +161,31 @@ def gather(particles, idx):
     return ak.unflatten(ak.unflatten(flat, ak.flatten(ak.num(idx, axis=2))), ak.num(idx, axis=1))
 
 
-def four_vectors(particles):
-    return ak.zip({"px": particles.px, "py": particles.py, "pz": particles.pz, "E": particles.energy},
-                  with_name="Momentum4D")
+def descendants(mask, n_dh):
+    """bool[n_dh, n_particles]: the particle descends from dark hadron j (bit j of its ancestry mask)."""
+    mask = ak.to_numpy(mask)
+    return ((mask[None, :] >> np.arange(n_dh, dtype=np.uint64)[:, None]) & np.uint64(1)).astype(bool)
+
+
+def truth_visible(masks, truth):
+    """bool[event][truth jet][particle]: the particle descends from a dark hadron of the truth jet."""
+    bits = ak.sum(np.uint64(1) << ak.values_astype(truth, np.uint64), axis=-1)
+    return (masks[:, None] & bits[:, :, None]) != 0
+
+
+def truth_jets(events, masks, truth):
+    """Truth jets as jet records: axis = sum of their dark hadrons, constituents = their visible descendants."""
+    in_truth = truth_visible(masks, truth)
+    index = ak.broadcast_arrays(ak.local_index(events.GenCandidate)[:, None], in_truth)[0][in_truth]
+    return jet_records(gather(events.GenCandidate, index), ak.sum(gather(events.DarkHadronCandidate, truth), axis=-1))
 
 
 def jet_records(constituents, axis=None):
     """Jets with a Constituents field, as Histogram.py's shape functions expect.
 
-    axis: four-vectors giving each jet's axis; default is the constituent sum
+    axis: each jet's four-vector; default is the constituent sum
     """
-    if axis is None:
-        axis = ak.sum(constituents, axis=-1)
-    return ak.zip({"px": axis.px, "py": axis.py, "pz": axis.pz, "E": axis.E, "Constituents": constituents},
-                  depth_limit=2, with_name="Momentum4D")
+    return ak.with_field(ak.sum(constituents, axis=-1) if axis is None else axis, constituents, "Constituents")
 
 
 def jet_shapes(jets, radii=()):
@@ -206,30 +213,18 @@ def radius_scan(events, radii, truth_radii=(0.8,), pt_min=PT_MIN, min_containmen
     masks = dark_hadron_ancestry(events)
     n_dh = ak.to_numpy(ak.num(events.DarkHadronCandidate))
     pt = events.GenCandidate.pt
-    candidates, dark_hadrons = four_vectors(events.GenCandidate), four_vectors(events.DarkHadronCandidate)
     truth = {r: cluster(events.DarkHadronCandidate, r, pt_min) for r in truth_radii}
     visible = {r: cluster(events.GenCandidate, r, pt_min) for r in radii}
 
-    def descendants(i):
-        mask = ak.to_numpy(masks[i])
-        bits = np.arange(n_dh[i], dtype=np.uint64)[:, None]
-        return mask, ((mask[None, :] >> bits) & np.uint64(1)).astype(bool)
-
     # visible jets: their own shapes (axis = constituent sum)
-    jet_shape = {r: jet_shapes(jet_records(gather(candidates, visible[r]))) for r in radii}
+    jet_shape = {r: jet_shapes(jet_records(gather(events.GenCandidate, visible[r]))) for r in radii}
     # truth jets: shapes of their visible descendants around the dark-hadron jet axis
-    truth_shape = {}
-    for r_dh in truth_radii:
-        visible_of_truth = ak.Array([
-            [np.flatnonzero(d[dh].any(axis=0)) for dh in (ak.to_numpy(t) for t in truth[r_dh][i])]
-            for i, d in ((i, descendants(i)[1]) for i in range(len(events)))
-        ])
-        axis = ak.sum(gather(dark_hadrons, truth[r_dh]), axis=-1)
-        truth_shape[r_dh] = jet_shapes(jet_records(gather(candidates, visible_of_truth), axis), radii)
+    truth_shape = {r_dh: jet_shapes(truth_jets(events, masks, truth[r_dh]), radii) for r_dh in truth_radii}
 
     rows = []
     for i in range(len(events)):
-        mask, descends = descendants(i)
+        mask = ak.to_numpy(masks[i])
+        descends = descendants(mask, n_dh[i])
         event_pt = ak.to_numpy(pt[i]).astype(np.float64)
         for r_dh in truth_radii:
             event_truth = [ak.to_numpy(t) for t in truth[r_dh][i]]
@@ -273,19 +268,3 @@ def check_clustering(events, candidates, jets, radius=0.8, nudge=1e-6, trials=10
     stats["passed"] = stats["mismatched_jets"] == 0
     return stats
 
-
-if __name__ == "__main__":
-    from magiconfig import ArgumentParser, ArgumentDefaultsRawHelpFormatter
-
-    parser = ArgumentParser(description=__doc__, formatter_class=ArgumentDefaultsRawHelpFormatter)
-    parser.add_argument("-i", "--input", required=True, help="Delphes events.root")
-    parser.add_argument("-n", "--max-events", type=int, default=None, help="number of events to check")
-    parser.add_argument("--dark-hadron-jets", action="store_true", help="also check DarkHadronJet")
-    args = parser.parse_args()
-
-    events = load(args.input)
-    if args.max_events is not None:
-        events = events[: args.max_events]
-    checks = [("GenCandidate", "GenFatJet")] + [("DarkHadronCandidate", "DarkHadronJet")] * args.dark_hadron_jets
-    for candidates, jets in checks:
-        print(jets, check_clustering(events, candidates, jets))

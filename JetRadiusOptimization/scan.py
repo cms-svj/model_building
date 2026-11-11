@@ -14,34 +14,32 @@ import pickle
 import numpy as np
 from magiconfig import ArgumentParser, ArgumentDefaultsRawHelpFormatter
 
-from radius import PT_MIN, load, radius_scan
+from radius import PT_MIN, check_clustering, load, radius_scan
 
 ALWAYS_RADII = (0.8, 1.0)
 
 if __name__ == "__main__":
     parser = ArgumentParser(description=__doc__, formatter_class=ArgumentDefaultsRawHelpFormatter)
-    parser.add_argument("-d", "--dir", required=True, help="model directory with events.root and Meta.pkl (or config.py)")
+    parser.add_argument("-d", "--dir", required=True, help="model directory with events.root and Meta.pkl")
     parser.add_argument("--radii", type=float, nargs="+", default=np.round(np.arange(0.2, 2.05, 0.1), 1).tolist(), help="visible jet radii; 0.8 and 1.0 are always added")
     parser.add_argument("--truth-radii", type=float, nargs="+", default=[0.8], help="radii of the dark-hadron (truth) jets; 0.8 and 1.0 are always added")
     parser.add_argument("--pt-min", type=float, default=PT_MIN, help="minimum clustered jet pT [GeV]")
     parser.add_argument("--min-containment", type=float, default=0.95, help="fraction of a dark hadron's visible pT a jet must hold for the dark hadron to be complete in the jet (1 = every visible descendant)")
     parser.add_argument("-n", "--max-events", type=int, default=None, help="number of events")
+    parser.add_argument("--check-clustering", action="store_true", help="first compare our R = 0.8 clustering with the stored GenFatJet and DarkHadronJet")
     args = parser.parse_args()
     # the standard radii 0.8 and 1.0 are always part of both grids
     args.radii = sorted({round(r, 3) for r in args.radii} | set(ALWAYS_RADII))
     args.truth_radii = sorted({round(r, 3) for r in args.truth_radii} | set(ALWAYS_RADII))
 
-    meta = os.path.join(args.dir, "Meta.pkl")
-    if os.path.exists(meta):
-        with open(meta, "rb") as f:
-            model = pickle.load(f)
-    else:
-        # models made before run_model wrote Meta.pkl
-        from svjHelper import svjHelper
-        model = svjHelper.build(os.path.join(args.dir, "config.py")).metadata()
+    with open(os.path.join(args.dir, "Meta.pkl"), "rb") as f:
+        model = pickle.load(f)
     events = load(os.path.join(args.dir, "events.root"))
     if args.max_events is not None:
         events = events[: args.max_events]
+    if args.check_clustering:
+        for candidates, jets in (("GenCandidate", "GenFatJet"), ("DarkHadronCandidate", "DarkHadronJet")):
+            print(jets, check_clustering(events, candidates, jets))
 
     output = {
         "model": model,
