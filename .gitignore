@@ -1,4 +1,6 @@
 /install/*/
+/install/pythia8
+/plots*
 *.png
 *.pkl
 *.pdf
