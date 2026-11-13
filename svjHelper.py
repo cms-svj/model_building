@@ -717,6 +717,7 @@ class svjHelper(baseHelper):
     # optional settings (e.g. to restore 8.310 behavior): option -> Pythia setting
     # a setting is only applied if the running Pythia build defines it (in $PYTHIA8DATA), otherwise it is skipped with a warning
     # HiddenValley stop*, mJoin*, mStringMin, constituentMass, closedM2max, kTolerance require patched Pythia (install/patches/pythia83NN_hvMassScales.patch) and setabsigma = 2;
+    # HiddenValley pTminFSRCutoff (dark gluon mass-effect veto cutoff) requires patched Pythia >= 8.315 (same patch) and setabsigma = 2;
     # patched settings only exist in versions where the quantity is rescaled by k
     pythia_extra_settings = {
         "hv_setabsigma": "HiddenValley:setabsigma",
@@ -733,6 +734,7 @@ class svjHelper(baseHelper):
         "hv_constituent_mass": "HiddenValley:constituentMass",
         "hv_closed_m2max": "HiddenValley:closedM2max",
         "hv_ktolerance": "HiddenValley:kTolerance",
+        "hv_ptminfsr_cutoff": "HiddenValley:pTminFSRCutoff",
         "stop_mass": "StringFragmentation:stopMass",
         "recoil_strategy_rf": "TimeShower:recoilStrategyRF",
     }
@@ -767,6 +769,7 @@ class svjHelper(baseHelper):
         parser.add_argument("--hv-constituent-mass", type=float, default=argparse.SUPPRESS, help="HiddenValley:constituentMass [GeV] (patched Pythia >= 8.315, setabsigma = 2)")
         parser.add_argument("--hv-closed-m2max", type=float, default=argparse.SUPPRESS, help="HiddenValley:closedM2max [GeV^2] (patched Pythia 8.315 only, setabsigma = 2)")
         parser.add_argument("--hv-ktolerance", type=float, default=argparse.SUPPRESS, help="HiddenValley:kTolerance (patched Pythia >= 8.315, setabsigma = 2)")
+        parser.add_argument("--hv-ptminfsr-cutoff", type=float, default=argparse.SUPPRESS, help="HiddenValley:pTminFSRCutoff [GeV], cutoff of the dark gluon mass-effect veto; negative = HiddenValley:pTminFSR (patched Pythia >= 8.315, setabsigma = 2)")
         parser.add_argument("--stop-mass", type=float, default=argparse.SUPPRESS, help="StringFragmentation:stopMass [GeV] (Pythia >= 8.313)")
         parser.add_argument("--recoil-strategy-rf", type=int, default=argparse.SUPPRESS, help="TimeShower:recoilStrategyRF (Pythia >= 8.313)")
 

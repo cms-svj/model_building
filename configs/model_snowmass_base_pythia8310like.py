@@ -20,7 +20,7 @@ config.hv_setabsigma = 2
 config.hv_alund = 0.3
 config.hv_blund = 0.0078130
 config.hv_sigmalund = 5.0595
-config.hv_rfact = [1.,1.,1.,1.,1.,1.,1.,1.]
+config.hv_rfact = [1.,1.,1.,1.,1.,1.,1.,1.,1.]
 config.recoil_strategy_rf = 1
 config.hv_stop_mass = 9.0          # 1.5 * m(pi_d)
 config.hv_stop_new_flav = 2.0
@@ -31,4 +31,5 @@ config.hv_mstring_min = 1.0
 config.hv_constituent_mass = 0.325
 config.hv_closed_m2max = 25.0
 config.hv_ktolerance = 1.0
+config.hv_ptminfsr_cutoff = 0.611 # 8.310 used the QCD cutoff TimeShower:pTmin, raised to 0.611
 
