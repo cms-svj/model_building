@@ -23,6 +23,13 @@ Options:
 source init.sh
 ```
 
+Multiple Pythia versions can be installed side by side (`./install.sh -e pythia8 -p [version]`), each in `install/pythia83[version]`.
+The most recently installed version is the default (`install/pythia8` symlink).
+To use a different installed version, pass its minor version to `init.sh` (in a fresh shell):
+```bash
+source init.sh 13
+```
+
 This repository is built on the [LCG 106](https://lcginfo.cern.ch/release_packages/106/x86_64-el9-gcc13-opt/) environment.
 Important software versions:
 * Python 3.11.9
