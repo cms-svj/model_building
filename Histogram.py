@@ -392,6 +392,26 @@ def jet_const_cumsum(array):
     jets_unflat = ak.unflatten(per_jet_flat, flat_counts)
     return ak.unflatten(jets_unflat, ak.num(counts, axis=1))
 
+def radius_percentile(jet, pct):
+    """Smallest DeltaR from the jet axis containing pct% of the jet's scalar constituent pT.
+
+    This is the inverse of the integrated jet shape Psi(r) (Seymour, hep-ph/9707338),
+    computed over the jet's own constituents. Missing (None) jets are dropped.
+    """
+    none_mask = ak.is_none(jet.pt, axis=1)
+    const_prop = ak.zip({
+        'dr': deltaR(jet),
+        'pt': jet.Constituents.pt,
+    })[~none_mask]
+    sort_indices = ak.argsort(const_prop.dr, axis=-1)
+    sorted_prop = const_prop[sort_indices]
+    cumul_pt = jet_const_cumsum(sorted_prop.pt)
+    # last element of sum is total from all constituents
+    total_pt = ak.fill_none(ak.pad_none(cumul_pt, 1, axis=-1)[:, :, -1], 0)
+    target_pt = pct/100 * total_pt
+    mask_pt = cumul_pt >= target_pt
+    return ak.firsts(sorted_prop[mask_pt].dr, axis=-1)
+
 def fill_stats(array):
     nparray = ak.to_numpy(ak.drop_none(ak.nan_to_none(ak.flatten(array, axis=None))))
     return {
@@ -558,19 +578,7 @@ def histogram(filename, helper, with_constituents=True, gen_only=False, debug=Fa
             # pt-weighted percentile per jet
             # scalar sum of constituent pT within DeltaR / scalar sum of all constituent pT = "jet shape"
             for pct in dr_pcts:
-                none_mask = ak.is_none(events[f"{pre}Jet12"], axis=1)
-                const_prop = ak.zip({
-                    'dr': deltaR(events[f"{pre}Jet12"]),
-                    'pt': events[f"{pre}Jet12"].Constituents.pt,
-                })[~none_mask]
-                sort_indices = ak.argsort(const_prop.dr, axis=-1)
-                sorted_prop = const_prop[sort_indices]
-                cumul_pt = jet_const_cumsum(sorted_prop.pt)
-                # last element of sum is total from all constituents
-                total_pt = ak.fill_none(ak.pad_none(cumul_pt, 1, axis=-1)[:, :, -1], 0)
-                target_pt = pct/100 * total_pt
-                mask_pt = cumul_pt >= target_pt
-                events[f"{pre}Jet12_radius{pct}"] = ak.pad_none(ak.firsts(sorted_prop[mask_pt].dr, axis=-1), target=2, axis=1)
+                events[f"{pre}Jet12_radius{pct}"] = ak.pad_none(radius_percentile(events[f"{pre}Jet12"], pct), target=2, axis=1)
                 for ind,key in zip(jet_inds, jet_ind_keys):
                     r_pct_pt = events[f"{pre}Jet12_radius{pct}"][:, ind]
                     meta_dict[f"{pre}Jet{key}_radius{pct}"] = fill_stats(r_pct_pt)
