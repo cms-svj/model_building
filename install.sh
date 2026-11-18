@@ -1,6 +1,7 @@
 #!/bin/bash
 
-source init.sh
+# empty argument for init.sh
+source init.sh ""
 
 ECHO="echo -e"
 export PYTHIA8MINOR=10
